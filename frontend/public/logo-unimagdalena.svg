@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <radialGradient id="skyGrad" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#fbd278"/>
+      <stop offset="40%" stop-color="#e27c3e"/>
+      <stop offset="100%" stop-color="#b83e26"/>
+    </radialGradient>
+    <linearGradient id="seaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#024b86"/>
+      <stop offset="50%" stop-color="#052c5c"/>
+      <stop offset="100%" stop-color="#011838"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe699"/>
+      <stop offset="50%" stop-color="#e5a93c"/>
+      <stop offset="100%" stop-color="#b87b14"/>
+    </linearGradient>
+    <linearGradient id="starBlueGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0080c8"/>
+      <stop offset="50%" stop-color="#015294"/>
+      <stop offset="100%" stop-color="#002d5a"/>
+    </linearGradient>
+    <linearGradient id="starGoldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffe082"/>
+      <stop offset="50%" stop-color="#f1b538"/>
+      <stop offset="100%" stop-color="#bd7d11"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Ring Gold Border -->
+  <circle cx="250" cy="250" r="238" fill="none" stroke="url(#goldGrad)" stroke-width="8"/>
+
+  <!-- Burgundy Outer Base Circle -->
+  <path d="M 40,250 A 210,210 0 0,0 460,250 L 460,260 A 210,210 0 0,1 40,260 Z" fill="#881538"/>
+  <circle cx="250" cy="250" r="230" fill="#ffffff"/>
+  
+  <!-- Outer Text Arc Guide -->
+  <path id="textArcTop" d="M 60,250 A 190,190 0 0,1 440,250" fill="none"/>
+  
+  <!-- "UNIVERSIDAD DEL MAGDALENA" Text -->
+  <text font-family="'Montserrat', 'Arial Black', sans-serif" font-weight="900" font-size="33" fill="#033068" letter-spacing="3.5">
+    <textPath href="#textArcTop" startOffset="50%" text-anchor="middle">
+      UNIVERSIDAD DEL MAGDALENA
+    </textPath>
+  </text>
+
+  <!-- Inner Circle (Main Emblem) -->
+  <g transform="translate(0, 0)">
+    <!-- Golden Ring Border for Emblem -->
+    <circle cx="250" cy="265" r="185" fill="none" stroke="url(#goldGrad)" stroke-width="6"/>
+
+    <!-- Bottom Red/Burgundy Semi-ring with sunrays -->
+    <path d="M 65,265 A 185,185 0 0,0 435,265 L 400,265 A 150,150 0 0,1 100,265 Z" fill="#8d1337"/>
+    <!-- Golden Sun Rays at Bottom -->
+    <g fill="#e5a93c">
+      <polygon points="100,340 125,315 140,340 115,365"/>
+      <polygon points="135,395 170,365 185,385 150,415"/>
+      <polygon points="400,340 375,315 360,340 385,365"/>
+      <polygon points="365,395 330,365 315,385 350,415"/>
+      <polygon points="235,445 250,415 265,445 250,450"/>
+    </g>
+
+    <!-- Top Sky Section -->
+    <clipPath id="emblemClip">
+      <circle cx="250" cy="265" r="180"/>
+    </clipPath>
+    
+    <g clip-path="url(#emblemClip)">
+      <!-- Sun/Sky gradient background -->
+      <rect x="70" y="85" width="360" height="200" fill="url(#skyGrad)"/>
+
+      <!-- Mountain Silhouettes -->
+      <path d="M 70,265 Q 160,190 220,230 T 360,200 Q 400,230 430,265 Z" fill="#aa482a" opacity="0.85"/>
+      <path d="M 70,265 Q 180,210 270,240 T 430,265 Z" fill="#7a2a16" opacity="0.6"/>
+
+      <!-- Bird / Dove in sky -->
+      <path d="M 280,185 C 295,175 315,175 335,185 C 315,190 305,200 295,205 C 285,210 270,210 260,200 C 270,195 275,190 280,185 Z" fill="#fce4c8" opacity="0.65"/>
+      <path d="M 225,180 C 255,165 295,170 330,190 C 290,195 260,215 230,225 C 215,220 215,200 225,180 Z" fill="#fad7b0" opacity="0.5"/>
+
+      <!-- Bottom Sea Section -->
+      <rect x="70" y="265" width="360" height="180" fill="url(#seaGrad)"/>
+
+      <!-- Shiny reflection lines in sea -->
+      <ellipse cx="250" cy="275" rx="140" ry="12" fill="#0080c8" opacity="0.3"/>
+      <ellipse cx="250" cy="310" rx="100" ry="8" fill="#0066aa" opacity="0.2"/>
+      <ellipse cx="250" cy="350" rx="70" ry="6" fill="#004d80" opacity="0.15"/>
+    </g>
+
+    <!-- Center Compass Star / Rosa de los Vientos -->
+    <g filter="url(#dropShadow)">
+      <!-- North Point (Top) -->
+      <polygon points="250,265 232,105 250,65" fill="#015294"/>
+      <polygon points="250,265 268,105 250,65" fill="#0088d8"/>
+      <!-- Fleur-de-lis Top Finial -->
+      <path d="M 250,60 C 240,80 225,85 220,95 C 235,95 245,88 250,85 C 255,88 265,95 280,95 C 275,85 260,80 250,60 Z" fill="#006bb3"/>
+      <circle cx="250" cy="98" r="4" fill="url(#goldGrad)"/>
+
+      <!-- South Point (Bottom) -->
+      <polygon points="250,265 238,420 250,470" fill="#e5a93c"/>
+      <polygon points="250,265 262,420 250,470" fill="#f5cb68"/>
+
+      <!-- East Point (Right) -->
+      <polygon points="250,265 420,256 465,265" fill="#0088d8"/>
+      <polygon points="250,265 420,274 465,265" fill="#014a84"/>
+
+      <!-- West Point (Left) -->
+      <polygon points="250,265 80,256 35,265" fill="#00a0e8"/>
+      <polygon points="250,265 80,274 35,265" fill="#015294"/>
+
+      <!-- Center Star Diagonals / Accent points -->
+      <polygon points="250,265 200,215 250,250" fill="#e5a93c"/>
+      <polygon points="250,265 300,215 250,250" fill="#f8db85"/>
+      <polygon points="250,265 200,315 250,280" fill="#013f70"/>
+      <polygon points="250,265 300,315 250,280" fill="#015ea8"/>
+
+      <!-- Center Compass Vertical/Horizontal Lines -->
+      <line x1="45" y1="265" x2="455" y2="265" stroke="url(#goldGrad)" stroke-width="3"/>
+      <line x1="250" y1="75" x2="250" y2="455" stroke="url(#goldGrad)" stroke-width="2"/>
+    </g>
+
+    <!-- Bottom Year "1962" Text in Ribbon Style -->
+    <g filter="url(#dropShadow)">
+      <text x="250" y="458" font-family="'Georgia', 'Times New Roman', serif" font-weight="bold" font-style="italic" font-size="46" fill="#ffffff" text-anchor="middle" letter-spacing="6">
+        1962
+      </text>
+      <text x="249" y="457" font-family="'Georgia', 'Times New Roman', serif" font-weight="bold" font-style="italic" font-size="46" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="6">
+        1962
+      </text>
+    </g>
+  </g>
+</svg>

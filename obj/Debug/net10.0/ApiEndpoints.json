@@ -1,0 +1,548 @@
+[
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.AsignacionesDecanoController",
+    "Method": "ObtenerAsignaciones",
+    "RelativePath": "api/v1/asignaciones-decano",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.API.Controllers.AsignacionesDecanoController\u002BEstadoAsignacionesDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.AsignacionesDecanoController",
+    "Method": "AsignarLiderFacultad",
+    "RelativePath": "api/v1/asignaciones-decano/lider-facultad",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AssessmentSystem.API.Controllers.AsignacionesDecanoController\u002BAsignarLiderFacultadDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.AsignacionesDecanoController",
+    "Method": "AsignarLiderPrograma",
+    "RelativePath": "api/v1/asignaciones-decano/lider-programa",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AssessmentSystem.API.Controllers.AsignacionesDecanoController\u002BAsignarLiderProgramaDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.AutenticacionController",
+    "Method": "IniciarSesion",
+    "RelativePath": "api/v1/autenticacion/iniciar-sesion",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "solicitud",
+        "Type": "AssessmentSystem.Business.DTOs.Autenticacion.SolicitudInicioSesionDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.Autenticacion.RespuestaAutenticacionDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 401
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.AutenticacionController",
+    "Method": "ObtenerUsuariosDemo",
+    "RelativePath": "api/v1/autenticacion/usuarios-demo",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Collections.Generic.List\u00601[[AssessmentSystem.API.Controllers.AutenticacionController\u002BUsuarioDemoDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.DatosInicialesController",
+    "Method": "ObtenerDatosIniciales",
+    "RelativePath": "api/v1/datos-iniciales",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.API.Controllers.DatosInicialesController\u002BDatosInicialesDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.DiagnosticoController",
+    "Method": "ProbarConexionDb",
+    "RelativePath": "api/v1/diagnostico/conexion-db",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.API.Controllers.DiagnosticoController\u002BEstadoConexionDbDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 500
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.EvidenciasController",
+    "Method": "EliminarEvidencia",
+    "RelativePath": "api/v1/evidencias/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Boolean, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.EvidenciasController",
+    "Method": "DescargarEvidencia",
+    "RelativePath": "api/v1/evidencias/{id}/descargar",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Void",
+        "MediaTypes": [],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.EvidenciasController",
+    "Method": "CargarEvidencia",
+    "RelativePath": "api/v1/evidencias/cargar/{medicionId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "medicionId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "archivo",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.Medicion.EvidenciaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.MedicionesController",
+    "Method": "RegistrarMedicion",
+    "RelativePath": "api/v1/mediciones",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AssessmentSystem.Business.DTOs.Medicion.CrearMedicionDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.Medicion.MedicionRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.MedicionesController",
+    "Method": "ObtenerPorId",
+    "RelativePath": "api/v1/mediciones/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.Medicion.MedicionRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.MedicionesController",
+    "Method": "RevisarMedicion",
+    "RelativePath": "api/v1/mediciones/{id}/revision",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "AssessmentSystem.Business.DTOs.Medicion.RevisarMedicionDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.Medicion.MedicionRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.PlanesAssessmentController",
+    "Method": "CrearPlanAssessment",
+    "RelativePath": "api/v1/planes-assessment",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "AssessmentSystem.Business.DTOs.PlanAssessment.CrearPlanAssessmentDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.PlanAssessment.PlanAssessmentRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 201
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 400
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 403
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.PlanesAssessmentController",
+    "Method": "ObtenerPorId",
+    "RelativePath": "api/v1/planes-assessment/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.PlanAssessment.PlanAssessmentRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.PlanesAssessmentController",
+    "Method": "ObtenerCursosDetallados",
+    "RelativePath": "api/v1/planes-assessment/cursos-detallados",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "programaId",
+        "Type": "System.Nullable\u00601[[System.Guid, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      },
+      {
+        "Name": "periodoCodigo",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Collections.Generic.List\u00601[[AssessmentSystem.API.Controllers.PlanesAssessmentController\u002BCursoDetalladoDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "AssessmentSystem.API.Controllers.PlanesAssessmentController",
+    "Method": "ObtenerPorPeriodo",
+    "RelativePath": "api/v1/planes-assessment/periodo/{periodoId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "periodoId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[AssessmentSystem.Business.DTOs.PlanAssessment.PlanAssessmentRespuestaDto, assessment, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      },
+      {
+        "Type": "AssessmentSystem.Business.DTOs.Comun.RespuestaApi\u00601[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 404
+      }
+    ]
+  }
+]
