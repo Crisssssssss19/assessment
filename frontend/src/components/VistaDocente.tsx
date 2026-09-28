@@ -679,23 +679,13 @@ export default function VistaDocente({
             <div className="bg-[#dceaf6] border border-[#b4d4ed] rounded-xl p-4 shadow-xs">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-base font-extrabold text-[#003865]">
-                      Asignatura: {cursoActivo.nombreAsignatura} ({cursoActivo.codigoAsignatura})
+                      Asignatura Activa: {cursoActivo.nombreAsignatura} ({cursoActivo.codigoAsignatura})
                     </span>
-                    {cursosDelDocente.length > 1 && (
-                      <select
-                        value={cursoActivo.asignaturaId}
-                        onChange={(e) => setCursoSeleccionadoId(e.target.value)}
-                        className="text-xs bg-white border border-[#94a3b8] rounded px-2.5 py-1 text-[#003865] font-semibold focus:outline-hidden cursor-pointer"
-                      >
-                        {cursosDelDocente.map((c) => (
-                          <option key={c.asignaturaId} value={c.asignaturaId}>
-                            Cambiar a: {c.nombreAsignatura} ({c.codigoAsignatura})
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <span className="text-[11px] font-bold text-[#0284c7] bg-white px-2 py-0.5 rounded border border-[#b4d4ed]">
+                      Semestre {cursoActivo.semestre}
+                    </span>
                   </div>
 
                   <p className="text-xs text-[#1e3a8a] mt-1">
@@ -709,10 +699,36 @@ export default function VistaDocente({
 
                 <div className="shrink-0 flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-[#003865] bg-white/80 px-3 py-1.5 rounded-lg border border-[#b4d4ed] shadow-2xs">
-                    Semestre {cursoActivo.semestre} • {cursoActivo.programaAcademico}
+                    {cursoActivo.programaAcademico}
                   </span>
                 </div>
               </div>
+
+              {/* SELECTOR RÁPIDO DE CURSO SI EL DOCENTE TIENE MÁS DE UNA ASIGNATURA */}
+              {cursosDelDocente.length > 1 && (
+                <div className="mt-3 pt-3 border-t border-[#b4d4ed]/80 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-[#003865] shrink-0">Selecciona el curso a evaluar:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {cursosDelDocente.map((c) => {
+                      const esActivo = c.asignaturaId === cursoActivo.asignaturaId;
+                      return (
+                        <button
+                          key={c.asignaturaId}
+                          onClick={() => setCursoSeleccionadoId(c.asignaturaId)}
+                          className={`text-xs px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            esActivo
+                              ? 'bg-[#003865] text-white shadow-2xs'
+                              : 'bg-white hover:bg-[#e0f2fe] text-[#003865] border border-[#b4d4ed]'
+                          }`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>{c.nombreAsignatura} ({c.codigoAsignatura})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -795,10 +811,10 @@ export default function VistaDocente({
                   <div>
                     <h2 className="text-base font-bold text-[#003865] flex items-center gap-2">
                       <GraduationCap className="w-5 h-5 text-[#004b87]" />
-                      Evaluaciones y Evidencias de los Estudiantes del Curso
+                      Evaluación de Estudiantes — {cursoActivo.nombreAsignatura} ({cursoActivo.codigoAsignatura})
                     </h2>
                     <p className="text-xs text-[#64748b] mt-0.5">
-                      Registra las calificaciones de cada estudiante y adjunta el examen o evidencia calificada individual (PDF/Word).
+                      Registra las calificaciones y evidencias de los estudiantes matriculados específicamente en este curso ({cursoActivo.codigoRa} • Semestre {cursoActivo.semestre}).
                     </p>
                   </div>
 
