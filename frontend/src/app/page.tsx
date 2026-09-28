@@ -188,16 +188,41 @@ export default function AssessmentApp() {
 
     // Validar asignación de rol: la Decana siempre tiene rol; los demás deben haber sido asignados por Decanatura o por el Líder de Programa
     const esDecana = u.rol === 'Decano' || u.correoElectronico.toLowerCase().includes('decano');
-    const esLiderProg = estadoAsignaciones?.programas.some(p => p.liderUsuarioId === u.id || p.correoLider === u.correoElectronico) || u.rol === 'LiderPrograma';
+    const progAsignado = estadoAsignaciones?.programas.find(
+      (p) => p.liderUsuarioId === u.id || p.correoLider?.toLowerCase() === u.correoElectronico?.toLowerCase()
+    );
+    const esLiderProg = !!progAsignado || u.rol === 'LiderPrograma';
     const esLiderFac = estadoAsignaciones?.liderCalidadFacultadId === u.id || u.rol === 'LiderCalidadFacultad';
-    const tieneCursosDocente = cursosDetallados.some(c => c.correoDocente?.toLowerCase() === u.correoElectronico?.toLowerCase());
+    const tieneCursosDocente = cursosDetallados.some((c) => c.correoDocente?.toLowerCase() === u.correoElectronico?.toLowerCase());
 
     const res = await iniciarSesion(u.correoElectronico);
 
     let rolEfectivo = esDecana ? 'Decano' : esLiderProg ? 'LiderPrograma' : esLiderFac ? 'LiderCalidadFacultad' : tieneCursosDocente ? 'Docente' : u.rol;
 
-    const progId = res.datos?.programaAcademicoId || u.programaAcademicoId || (rolEfectivo === 'LiderPrograma' ? 'prog3' : null);
-    const progNombre = res.datos?.nombrePrograma || u.nombrePrograma || (rolEfectivo === 'LiderPrograma' ? 'Ingeniería de Sistemas' : null);
+    let progId = progAsignado?.programaId || res.datos?.programaAcademicoId || u.programaAcademicoId;
+    let progNombre = progAsignado?.nombrePrograma || res.datos?.nombrePrograma || u.nombrePrograma;
+
+    if (datosCatalogo?.programas) {
+      if (progNombre) {
+        const pMatch = datosCatalogo.programas.find(
+          (p) => p.nombre.toLowerCase().trim() === progNombre?.toLowerCase().trim() || p.id === progId
+        );
+        if (pMatch) {
+          progId = pMatch.id;
+          progNombre = pMatch.nombre;
+        }
+      } else if (progId) {
+        const pMatch = datosCatalogo.programas.find((p) => p.id === progId);
+        if (pMatch) {
+          progNombre = pMatch.nombre;
+        }
+      }
+    }
+
+    if (rolEfectivo === 'LiderPrograma' && !progId && datosCatalogo?.programas && datosCatalogo.programas.length > 0) {
+      progId = datosCatalogo.programas[0].id;
+      progNombre = datosCatalogo.programas[0].nombre;
+    }
 
     setUsuarioActual({
       id: u.id,
@@ -245,7 +270,8 @@ export default function AssessmentApp() {
 
     // 3. Construir la lista completa de las 21 asignaturas (7 RAs x 3 cursos: F1, F2, Sumativa)
     const todasAsignaturas: AsignaturaPlanPayload[] = [];
-    const asignaturasCatalogo = datosCatalogo.asignaturas || [];
+    const asignaturasPorPrograma = (datosCatalogo.asignaturas || []).filter(a => !progId || a.programaAcademicoId === progId);
+    const asignaturasCatalogo = asignaturasPorPrograma.length > 0 ? asignaturasPorPrograma : (datosCatalogo.asignaturas || []);
     const docentesCatalogo = datosCatalogo.docentes || [];
     const supervisoresCatalogo = datosCatalogo.supervisoresCalidadRa || [];
 
@@ -530,6 +556,45 @@ export default function AssessmentApp() {
 
   const esDecano = usuarioActual.rol === 'Decano';
   const esLiderPrograma = usuarioActual.rol === 'LiderPrograma';
+
+  // Obtener los cursos filtrados por el programa académico del Líder o el seleccionado
+  const asignaturasDisponibles = (() => {
+    if (!datosCatalogo?.asignaturas || datosCatalogo.asignaturas.length === 0) return [];
+
+    const progAsignado = estadoAsignaciones?.programas.find(
+      (p) => p.liderUsuarioId === usuarioActual?.id || p.correoLider?.toLowerCase() === usuarioActual?.correo?.toLowerCase()
+    );
+
+    let progId = progAsignado?.programaId || usuarioActual?.programaAcademicoId;
+    let progNombre = progAsignado?.nombrePrograma || usuarioActual?.nombrePrograma;
+
+    if (datosCatalogo?.programas) {
+      if (progNombre) {
+        const match = datosCatalogo.programas.find(
+          (p) => p.nombre.toLowerCase().trim() === progNombre?.toLowerCase().trim() || p.id === progId
+        );
+        if (match) {
+          progId = match.id;
+        }
+      } else if (progId) {
+        const match = datosCatalogo.programas.find((p) => p.id === progId);
+        if (match) {
+          progId = match.id;
+        }
+      }
+    }
+
+    if (!progId && programaSeleccionadoId && programaSeleccionadoId !== 'todos') {
+      progId = programaSeleccionadoId;
+    }
+
+    if (progId) {
+      const filtradas = datosCatalogo.asignaturas.filter((a) => a.programaAcademicoId === progId);
+      if (filtradas.length > 0) return filtradas;
+    }
+
+    return datosCatalogo.asignaturas;
+  })();
 
   const nombreProgramaActual = programaSeleccionadoId === 'todos'
     ? 'Consolidado General - Facultad de Ingeniería'
@@ -1451,13 +1516,13 @@ export default function AssessmentApp() {
                                   disabled={esDecano}
                                   value={curso.asignaturaId}
                                   onChange={(e) => {
-                                    const selected = datosCatalogo?.asignaturas.find((a) => a.id === e.target.value);
+                                    const selected = (datosCatalogo?.asignaturas || []).find((a) => a.id === e.target.value);
                                     const newCursos = [...configActual.cursos];
                                     newCursos[idx] = {
                                       ...newCursos[idx],
                                       asignaturaId: e.target.value,
                                       nombreCurso: selected?.nombre || '',
-                                      semestre: selected?.semestre || newCursos[idx].semestre
+                                      semestre: selected?.semestre ?? (newCursos[idx]?.semestre || 1)
                                     };
                                     setPlanAsignaturas({
                                       ...planAsignaturas,
@@ -1467,7 +1532,7 @@ export default function AssessmentApp() {
                                   className={`w-full bg-white border border-[#94a3b8] rounded-md px-2.5 py-1.5 text-xs text-[#003865] font-semibold focus:outline-none ${esDecano ? 'cursor-not-allowed opacity-80' : ''}`}
                                 >
                                   <option value="">-- Seleccionar Asignatura --</option>
-                                  {datosCatalogo?.asignaturas.map((a) => (
+                                  {asignaturasDisponibles.map((a) => (
                                     <option key={a.id} value={a.id}>
                                       {a.codigo} - {a.nombre} (Sem {a.semestre})
                                     </option>
@@ -1475,23 +1540,12 @@ export default function AssessmentApp() {
                                 </select>
                               </td>
 
-                              <td className="p-3">
-                                <input
-                                  type="number"
-                                  disabled={esDecano}
-                                  min={1}
-                                  max={12}
-                                  value={curso.semestre}
-                                  onChange={(e) => {
-                                    const newCursos = [...configActual.cursos];
-                                    newCursos[idx] = { ...newCursos[idx], semestre: parseInt(e.target.value) || 1 };
-                                    setPlanAsignaturas({
-                                      ...planAsignaturas,
-                                      [raActual.codigo]: { ...configActual, cursos: newCursos }
-                                    });
-                                  }}
-                                  className={`w-full bg-white border border-[#94a3b8] rounded-md px-2.5 py-1.5 text-xs text-[#003865] font-bold text-center focus:outline-none ${esDecano ? 'cursor-not-allowed opacity-80' : ''}`}
-                                />
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center">
+                                  <span className="inline-flex items-center justify-center min-w-[3.5rem] py-1 px-2 bg-[#f1f5f9] border border-[#cbd5e1] rounded-md text-xs font-black text-[#003865] shadow-2xs">
+                                    {curso.semestre ? `Sem ${curso.semestre}` : '-'}
+                                  </span>
+                                </div>
                               </td>
 
                               <td className="p-3">

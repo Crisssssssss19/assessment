@@ -17,7 +17,7 @@ public class DatosInicialesController : ControllerBase
         _contexto = contexto;
     }
 
-    public record ItemDto(Guid Id, string Codigo, string Nombre, string? Descripcion = null, int? Semestre = null);
+    public record ItemDto(Guid Id, string Codigo, string Nombre, string? Descripcion = null, int? Semestre = null, Guid? ProgramaAcademicoId = null);
     public record DatosInicialesDto(
         List<ItemDto> Programas,
         List<ItemDto> Periodos,
@@ -37,24 +37,24 @@ public class DatosInicialesController : ControllerBase
         var programas = await _contexto.ProgramasAcademicos
             .Where(p => p.EstaActivo)
             .OrderBy(p => p.Nombre)
-            .Select(p => new ItemDto(p.Id, p.Codigo, p.Nombre, p.Facultad, null))
+            .Select(p => new ItemDto(p.Id, p.Codigo, p.Nombre, p.Facultad, null, null))
             .ToListAsync();
 
         var periodos = await _contexto.PeriodosAcademicos
             .Where(p => p.EstaActivo)
-            .Select(p => new ItemDto(p.Id, p.Codigo, p.Nombre, null, null))
+            .Select(p => new ItemDto(p.Id, p.Codigo, p.Nombre, null, null, null))
             .ToListAsync();
 
         var ras = await _contexto.ResultadosAprendizaje
             .Where(r => r.EstaActivo)
             .OrderBy(r => r.Codigo)
-            .Select(r => new ItemDto(r.Id, r.Codigo, r.Nombre, r.Descripcion, null))
+            .Select(r => new ItemDto(r.Id, r.Codigo, r.Nombre, r.Descripcion, null, null))
             .ToListAsync();
 
         var asignaturas = await _contexto.Asignaturas
             .Where(a => a.EstaActivo)
             .OrderBy(a => a.Semestre).ThenBy(a => a.Nombre)
-            .Select(a => new ItemDto(a.Id, a.Codigo, a.Nombre, null, a.Semestre))
+            .Select(a => new ItemDto(a.Id, a.Codigo, a.Nombre, null, a.Semestre, a.ProgramaAcademicoId))
             .ToListAsync();
 
         var docentes = await _contexto.Usuarios

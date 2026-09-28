@@ -15,6 +15,7 @@ export interface ItemCatalogo {
   nombre: string;
   descripcion?: string | null;
   semestre?: number | null;
+  programaAcademicoId?: string | null;
 }
 
 export interface DatosIniciales {
