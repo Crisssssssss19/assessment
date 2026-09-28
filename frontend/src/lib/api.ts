@@ -60,6 +60,8 @@ export interface IndicadorCursoDetalle {
 
 export interface CursoDetallado {
   asignaturaId: string;
+  asignaturaPlanId?: string;
+  medicionId?: string;
   codigoAsignatura: string;
   nombreAsignatura: string;
   semestre: number;
@@ -77,7 +79,16 @@ export interface CursoDetallado {
   nombreSupervisorRa: string;
   correoSupervisorRa: string;
   estadoEvaluacion: string;
+  estadoEvaluacionNumero?: number;
   totalEvidencias: number;
+  totalEstudiantesEvaluados?: number;
+  porcentajeCumplimiento?: number;
+  cantidadNivel90a100?: number;
+  cantidadNivel70a89?: number;
+  cantidadNivel60a69?: number;
+  cantidadNivel0a59?: number;
+  analisisCualitativo?: string | null;
+  planMejora?: string | null;
   indicadores: IndicadorCursoDetalle[];
 }
 
@@ -371,6 +382,23 @@ export async function asignarLiderPrograma(programaId: string, usuarioId?: strin
   return await res.json();
 }
 
+export async function crearPeriodoAcademico(payload: { codigo: string; nombre: string; fechaInicio?: string; fechaFin?: string; esActual?: boolean }, token: string = 'demo-token') {
+  const res = await fetch(`${API_BASE_URL}/asignaciones-decano/periodos`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+  return await res.json();
+}
+
+export async function obtenerPeriodosAcademicos() {
+  const res = await fetch(`${API_BASE_URL}/asignaciones-decano/periodos`);
+  return await res.json();
+}
+
 export async function guardarPlanAssessment(tokenOrPayload: string | CrearPlanPayload, maybePayload?: CrearPlanPayload) {
   const token = typeof tokenOrPayload === 'string' ? tokenOrPayload : 'demo-token';
   const payload = typeof tokenOrPayload === 'string' ? maybePayload! : tokenOrPayload;
@@ -454,6 +482,7 @@ export interface EvaluacionEstudianteItem {
   tipoContenidoEvidencia?: string | null;
   tamanoArchivoBytes?: number | null;
   observaciones?: string | null;
+  tieneEvidencia?: boolean;
 }
 
 export interface ItemEstudiantePayload {
@@ -637,5 +666,39 @@ export async function agregarObservacionMedicion(
     };
   }
 }
+
+export async function revisarMedicion(
+  medicionId: string,
+  aprobado: boolean,
+  observaciones: string,
+  planMejora?: string,
+  token: string = 'demo-token'
+): Promise<{ exitoso: boolean; mensaje: string; datos?: any }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/mediciones/${medicionId}/revision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ aprobado, observaciones, planMejora })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.mensaje || 'Error al emitir dictamen de revisión.');
+    }
+    return {
+      exitoso: true,
+      mensaje: data.mensaje || (aprobado ? 'Medición aprobada exitosamente.' : 'Medición devuelta para correcciones.'),
+      datos: data.datos
+    };
+  } catch (err: any) {
+    return {
+      exitoso: false,
+      mensaje: err?.message || 'Error al emitir dictamen de revisión.'
+    };
+  }
+}
+
 
 

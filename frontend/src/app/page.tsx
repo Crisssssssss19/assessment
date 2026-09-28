@@ -25,9 +25,12 @@ import {
   FileText,
   Award,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  Calendar,
+  Plus
 } from 'lucide-react';
 import VistaDocente from '@/components/VistaDocente';
+import VistaSupervisorCalidad from '@/components/VistaSupervisorCalidad';
 import {
   obtenerUsuariosDemo,
   iniciarSesion,
@@ -36,6 +39,8 @@ import {
   obtenerAsignacionesDecano,
   asignarLiderFacultad,
   asignarLiderPrograma,
+  crearPeriodoAcademico,
+  obtenerPeriodosAcademicos,
   obtenerCursosDetallados,
   UsuarioDemo,
   DatosIniciales,
@@ -77,6 +82,14 @@ export default function AssessmentApp() {
 
   const [programaSeleccionadoId, setProgramaSeleccionadoId] = useState<string>('todos');
   const [periodoSeleccionado, setPeriodoSeleccionado] = useState<string>('2026-1');
+  const [periodosAcademicos, setPeriodosAcademicos] = useState<{ id: string; codigo: string; nombre: string; fechaInicio?: string; fechaFin?: string; esActual?: boolean }[]>([]);
+  const [modalCrearPeriodo, setModalCrearPeriodo] = useState(false);
+  const [nuevoPeriodoCodigo, setNuevoPeriodoCodigo] = useState('');
+  const [nuevoPeriodoNombre, setNuevoPeriodoNombre] = useState('');
+  const [nuevoPeriodoFechaInicio, setNuevoPeriodoFechaInicio] = useState('');
+  const [nuevoPeriodoFechaFin, setNuevoPeriodoFechaFin] = useState('');
+  const [nuevoPeriodoEsActual, setNuevoPeriodoEsActual] = useState(true);
+  const [guardandoPeriodo, setGuardandoPeriodo] = useState(false);
   const [raIndexActual, setRaIndexActual] = useState<number>(0);
 
   // Control de las 3 vistas de Assessment
@@ -109,6 +122,15 @@ export default function AssessmentApp() {
 
       const catalogos = await obtenerDatosIniciales();
       setDatosCatalogo(catalogos);
+
+      const perRes = await obtenerPeriodosAcademicos();
+      if (perRes && perRes.datos) {
+        setPeriodosAcademicos(perRes.datos);
+        const actual = perRes.datos.find((p: any) => p.esActual);
+        if (actual) {
+          setPeriodoSeleccionado(actual.codigo);
+        }
+      }
 
       const asignaciones = await obtenerAsignacionesDecano();
       setEstadoAsignaciones(asignaciones);
@@ -193,11 +215,18 @@ export default function AssessmentApp() {
     );
     const esLiderProg = !!progAsignado || u.rol === 'LiderPrograma';
     const esLiderFac = estadoAsignaciones?.liderCalidadFacultadId === u.id || u.rol === 'LiderCalidadFacultad';
+    
+    // Supervisión de RA: revisar en cursos cargados o en la configuración de plan
+    const rasSupervisados = Array.from(new Set([
+      ...cursosDetallados.filter(c => c.correoSupervisorRa?.toLowerCase() === u.correoElectronico.toLowerCase() || c.nombreSupervisorRa?.toLowerCase() === u.nombreCompleto.toLowerCase()).map(c => c.codigoRa),
+      ...Object.entries(planAsignaturas).filter(([_, cfg]) => cfg.supervisorRaId === u.id).map(([raKey]) => raKey)
+    ]));
+    const esSupervisorRa = u.rol === 'LiderCalidadRA' || rasSupervisados.length > 0;
     const tieneCursosDocente = cursosDetallados.some((c) => c.correoDocente?.toLowerCase() === u.correoElectronico?.toLowerCase());
 
     const res = await iniciarSesion(u.correoElectronico);
 
-    let rolEfectivo = esDecana ? 'Decano' : esLiderProg ? 'LiderPrograma' : esLiderFac ? 'LiderCalidadFacultad' : tieneCursosDocente ? 'Docente' : u.rol;
+    let rolEfectivo = esDecana ? 'Decano' : esLiderProg ? 'LiderPrograma' : esLiderFac ? 'LiderCalidadFacultad' : esSupervisorRa ? 'LiderCalidadRA' : tieneCursosDocente ? 'Docente' : u.rol;
 
     let progId = progAsignado?.programaId || res.datos?.programaAcademicoId || u.programaAcademicoId;
     let progNombre = progAsignado?.nombrePrograma || res.datos?.nombrePrograma || u.nombrePrograma;
@@ -370,6 +399,57 @@ export default function AssessmentApp() {
     }
   };
 
+  const handleCrearPeriodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevoPeriodoCodigo.trim() || !nuevoPeriodoNombre.trim()) {
+      setMensajeError('El código y el nombre del período son obligatorios.');
+      setTimeout(() => setMensajeError(null), 4000);
+      return;
+    }
+    setGuardandoPeriodo(true);
+    try {
+      const res = await crearPeriodoAcademico(
+        {
+          codigo: nuevoPeriodoCodigo.trim(),
+          nombre: nuevoPeriodoNombre.trim(),
+          fechaInicio: nuevoPeriodoFechaInicio ? new Date(nuevoPeriodoFechaInicio).toISOString() : undefined,
+          fechaFin: nuevoPeriodoFechaFin ? new Date(nuevoPeriodoFechaFin).toISOString() : undefined,
+          esActual: nuevoPeriodoEsActual
+        },
+        usuarioActual?.token || 'demo-token'
+      );
+
+      if (res.exitoso || res.datos) {
+        setMensajeExito(res.mensaje || `Período académico '${nuevoPeriodoCodigo}' creado exitosamente.`);
+        setModalCrearPeriodo(false);
+        const codCreado = nuevoPeriodoCodigo.trim();
+        setNuevoPeriodoCodigo('');
+        setNuevoPeriodoNombre('');
+        setNuevoPeriodoFechaInicio('');
+        setNuevoPeriodoFechaFin('');
+        setNuevoPeriodoEsActual(true);
+
+        // Actualizar catálogos y períodos
+        const catalogos = await obtenerDatosIniciales();
+        setDatosCatalogo(catalogos);
+        const perRes = await obtenerPeriodosAcademicos();
+        if (perRes && perRes.datos) {
+          setPeriodosAcademicos(perRes.datos);
+        }
+        setPeriodoSeleccionado(codCreado);
+        setTimeout(() => setMensajeExito(null), 4000);
+      } else {
+        setMensajeError(res.mensaje || 'Error al crear el período académico.');
+        setTimeout(() => setMensajeError(null), 4000);
+      }
+    } catch (err: any) {
+      setMensajeError(err?.message || 'Error de conexión al crear el período.');
+      setTimeout(() => setMensajeError(null), 4000);
+    } finally {
+      setGuardandoPeriodo(false);
+    }
+  };
+
   // -------------------------------------------------------------
   // PANTALLA DE LOGIN CON DISEÑO INSTITUCIONAL
   // -------------------------------------------------------------
@@ -453,6 +533,28 @@ export default function AssessmentApp() {
             </button>
 
             <button
+              onClick={() => {
+                const supDemo = usuariosDemo.find(u => u.rol === 'LiderCalidadRA' || u.correoElectronico.toLowerCase().includes('carlos.ramirez')) || {
+                  id: '3',
+                  nombreCompleto: 'Carlos Ramírez',
+                  correoElectronico: 'carlos.ramirez@unimagdalena.edu.co',
+                  rol: 'LiderCalidadRA'
+                };
+                handleLoginDemo(supDemo);
+              }}
+              disabled={cargando}
+              className="w-full bg-white hover:bg-purple-50 text-purple-950 font-bold py-3 px-4 rounded-xl text-xs transition-colors flex items-center justify-between cursor-pointer border-2 border-purple-600 shadow-xs"
+            >
+              <div className="text-left">
+                <span className="block font-bold text-sm text-purple-950">Ingresar como Supervisor de Calidad</span>
+                <span className="text-[10px] text-[#64748b]">Auditoría de RAs, Revisión de Mediciones y Dictámenes</span>
+              </div>
+              <span className="bg-purple-100 text-purple-900 font-mono text-[10px] px-2 py-0.5 rounded border border-purple-300 font-bold">
+                Supervisor RA
+              </span>
+            </button>
+
+            <button
               onClick={() => handleLoginDemo(usuarioDocente)}
               disabled={cargando}
               className="w-full bg-white hover:bg-[#f8fafc] text-[#003865] font-bold py-3 px-4 rounded-xl text-xs transition-colors flex items-center justify-between cursor-pointer border-2 border-[#004b87] shadow-xs"
@@ -478,7 +580,12 @@ export default function AssessmentApp() {
                 const progAsignado = estadoAsignaciones?.programas.find(p => p.liderUsuarioId === u.id || p.correoLider === u.correoElectronico);
                 const esLidFac = estadoAsignaciones?.liderCalidadFacultadId === u.id;
                 const cursosDoc = cursosDetallados.filter(c => c.correoDocente?.toLowerCase() === u.correoElectronico.toLowerCase());
-                const tieneAsignacion = esDec || !!progAsignado || esLidFac || cursosDoc.length > 0;
+                const rasSupervisados = Array.from(new Set([
+                  ...cursosDetallados.filter(c => c.correoSupervisorRa?.toLowerCase() === u.correoElectronico.toLowerCase() || c.nombreSupervisorRa?.toLowerCase() === u.nombreCompleto.toLowerCase()).map(c => c.codigoRa),
+                  ...Object.entries(planAsignaturas).filter(([_, cfg]) => cfg.supervisorRaId === u.id).map(([raKey]) => raKey)
+                ]));
+                const esSupCalidad = u.rol === 'LiderCalidadRA' || rasSupervisados.length > 0;
+                const tieneAsignacion = esDec || !!progAsignado || esLidFac || esSupCalidad || cursosDoc.length > 0;
 
                 let etiquetaRol = 'Sin Asignar (Pendiente)';
                 let badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
@@ -492,6 +599,9 @@ export default function AssessmentApp() {
                 } else if (esLidFac) {
                   etiquetaRol = 'Líder Facultad';
                   badgeClass = 'bg-[#e0f2fe] text-[#0369a1] border-[#bae6fd]';
+                } else if (esSupCalidad) {
+                  etiquetaRol = `Supervisor (${rasSupervisados.length > 0 ? rasSupervisados.join(', ') : 'Calidad RA'})`;
+                  badgeClass = 'bg-purple-100 text-purple-800 border-purple-300';
                 } else if (cursosDoc.length > 0) {
                   etiquetaRol = `Docente (${cursosDoc.length} ${cursosDoc.length === 1 ? 'curso' : 'cursos'})`;
                   badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
@@ -534,7 +644,20 @@ export default function AssessmentApp() {
   }
 
   // -------------------------------------------------------------
-  // SI EL ROL ES DOCENTE: RENDERIZAR LA VISTA EXCLUSIVA DEL DOCENTE
+  // SI EL ROL ES SUPERVISOR DE CALIDAD (LiderCalidadRA)
+  // -------------------------------------------------------------
+  if (usuarioActual.rol === 'LiderCalidadRA') {
+    return (
+      <VistaSupervisorCalidad
+        usuarioActual={usuarioActual}
+        cursosDisponibles={cursosDetallados}
+        onCerrarSesion={() => setUsuarioActual(null)}
+      />
+    );
+  }
+
+  // -------------------------------------------------------------
+  // SI EL ROL ES DOCENTE: VISTA DOCENTE
   // -------------------------------------------------------------
   if (usuarioActual.rol === 'Docente') {
     return (
@@ -993,15 +1116,29 @@ export default function AssessmentApp() {
                 <div className="flex flex-wrap items-center gap-4">
                   <div>
                     <label className="text-[11px] font-bold uppercase tracking-wider text-[#64748b] block mb-1">
-                      Periodo
+                      Período de Assessment
                     </label>
-                    <input
-                      type="text"
-                      disabled={esDecano}
+                    <select
                       value={periodoSeleccionado}
                       onChange={(e) => setPeriodoSeleccionado(e.target.value)}
-                      className="bg-white border border-[#94a3b8] rounded-md px-3 py-1.5 text-xs text-[#003865] font-mono font-bold w-28 focus:outline-none"
-                    />
+                      className="bg-white border border-[#94a3b8] rounded-md px-3 py-1.5 text-xs text-[#003865] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                    >
+                      {periodosAcademicos.length > 0 ? (
+                        periodosAcademicos.map((p) => (
+                          <option key={p.id || p.codigo} value={p.codigo}>
+                            {p.codigo} {p.esActual ? '(Vigente)' : ''} - {p.nombre}
+                          </option>
+                        ))
+                      ) : datosCatalogo?.periodos && datosCatalogo.periodos.length > 0 ? (
+                        datosCatalogo.periodos.map((p) => (
+                          <option key={p.id || p.codigo} value={p.codigo}>
+                            {p.codigo} - {p.nombre}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="2026-1">2026-1 (Vigente)</option>
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -2017,6 +2154,74 @@ export default function AssessmentApp() {
                   </table>
                 </div>
               </div>
+
+              {/* SECCIÓN 3: GESTIÓN DE PERÍODOS ACADÉMICOS DE ASSESSMENT */}
+              <div className="bg-white border border-[#cbd5e1] rounded-xl p-6 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#003865] uppercase tracking-wide flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#004b87]" />
+                      3. Gestión de Períodos Académicos de Assessment
+                    </h3>
+                    <p className="text-xs text-[#64748b] mt-0.5">
+                      Configuración de los períodos oficiales para la medición y evaluación continua de los 10 programas de Ingeniería.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setNuevoPeriodoCodigo('');
+                      setNuevoPeriodoNombre('');
+                      setNuevoPeriodoFechaInicio('');
+                      setNuevoPeriodoFechaFin('');
+                      setNuevoPeriodoEsActual(true);
+                      setModalCrearPeriodo(true);
+                    }}
+                    className="inline-flex items-center gap-2 bg-[#004b87] hover:bg-[#003865] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Crear Período Académico
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                  {(periodosAcademicos.length > 0 ? periodosAcademicos : (datosCatalogo?.periodos || [])).map((per: any) => {
+                    const esActivo = per.esActual || per.codigo === periodoSeleccionado;
+                    return (
+                      <div
+                        key={per.id || per.codigo}
+                        className={`p-4 rounded-xl border transition-all ${
+                          esActivo
+                            ? 'bg-[#f0f9ff] border-[#0284c7] shadow-xs'
+                            : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono font-black text-sm px-2.5 py-0.5 rounded bg-[#003865] text-white">
+                            {per.codigo}
+                          </span>
+                          {per.esActual ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Período Actual
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-[#64748b] px-2 py-0.5 rounded-full bg-[#f1f5f9] border border-[#e2e8f0]">
+                              Histórico
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="text-xs font-bold text-[#0f172a] mb-1">{per.nombre}</h4>
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#64748b]">
+                          <Clock className="w-3 h-3 text-[#94a3b8]" />
+                          <span>
+                            {per.fechaInicio ? new Date(per.fechaInicio).toLocaleDateString() : 'Inicio del ciclo'} - {per.fechaFin ? new Date(per.fechaFin).toLocaleDateString() : 'Fin del ciclo'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </main>
@@ -2161,6 +2366,127 @@ export default function AssessmentApp() {
                 Cerrar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: CREAR PERÍODO ACADÉMICO (DECANO) */}
+      {/* ========================================================= */}
+      {modalCrearPeriodo && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#cbd5e1] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col text-[#1e293b]">
+            <div className="p-5 border-b border-[#bcd6ea] flex items-center justify-between bg-[#e8f1f8] rounded-t-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#003865] flex items-center justify-center text-white">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#003865]">Crear Período Académico</h3>
+                  <p className="text-[11px] text-[#475569]">Decanatura de Ingeniería • Universidad del Magdalena</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalCrearPeriodo(false)}
+                className="p-1.5 rounded-lg hover:bg-white/80 text-[#64748b] hover:text-[#0f172a] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCrearPeriodo} className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-[#003865] uppercase block mb-1.5">
+                  Código del Período *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: 2026-2, 2027-1"
+                  value={nuevoPeriodoCodigo}
+                  onChange={(e) => setNuevoPeriodoCodigo(e.target.value)}
+                  className="w-full bg-white border border-[#94a3b8] rounded-lg px-3.5 py-2 text-xs font-mono font-bold text-[#003865] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                />
+                <span className="text-[11px] text-[#64748b] mt-1 block">Formato estándar semestral: AAAA-1 o AAAA-2.</span>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#003865] uppercase block mb-1.5">
+                  Nombre Oficial / Descriptivo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Período Académico 2026 - II"
+                  value={nuevoPeriodoNombre}
+                  onChange={(e) => setNuevoPeriodoNombre(e.target.value)}
+                  className="w-full bg-white border border-[#94a3b8] rounded-lg px-3.5 py-2 text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-[#003865] uppercase block mb-1.5">
+                    Fecha de Inicio
+                  </label>
+                  <input
+                    type="date"
+                    value={nuevoPeriodoFechaInicio}
+                    onChange={(e) => setNuevoPeriodoFechaInicio(e.target.value)}
+                    className="w-full bg-white border border-[#94a3b8] rounded-lg px-3 py-2 text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#003865] uppercase block mb-1.5">
+                    Fecha de Finalización
+                  </label>
+                  <input
+                    type="date"
+                    value={nuevoPeriodoFechaFin}
+                    onChange={(e) => setNuevoPeriodoFechaFin(e.target.value)}
+                    className="w-full bg-white border border-[#94a3b8] rounded-lg px-3 py-2 text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2.5 cursor-pointer bg-[#f8fafc] p-3 rounded-lg border border-[#e2e8f0]">
+                  <input
+                    type="checkbox"
+                    checked={nuevoPeriodoEsActual}
+                    onChange={(e) => setNuevoPeriodoEsActual(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#004b87] border-[#94a3b8] focus:ring-[#004b87]"
+                  />
+                  <span className="text-xs font-semibold text-[#0f172a]">
+                    Establecer como Período Académico Actual / Vigente de la Facultad
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#e2e8f0]">
+                <button
+                  type="button"
+                  onClick={() => setModalCrearPeriodo(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-[#64748b] hover:bg-[#f1f5f9] transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoPeriodo}
+                  className="px-5 py-2 rounded-lg text-xs font-bold bg-[#004b87] hover:bg-[#003865] text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2 shadow-xs"
+                >
+                  {guardandoPeriodo ? (
+                    <span>Guardando período...</span>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Crear Período</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

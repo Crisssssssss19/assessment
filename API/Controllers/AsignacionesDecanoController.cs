@@ -246,4 +246,73 @@ public class AsignacionesDecanoController : ControllerBase
         await _contexto.SaveChangesAsync();
         return Ok(RespuestaApi<bool>.RespuestaExitosa(true, $"Se ha asignado a {nuevoLider.Nombres} {nuevoLider.Apellidos} como Líder de {programa.Nombre}."));
     }
+
+    public record CrearPeriodoAcademicoDto(
+        string Codigo,
+        string Nombre,
+        DateTime? FechaInicio = null,
+        DateTime? FechaFin = null,
+        bool EsActual = true
+    );
+
+    /// <summary>
+    /// Permite al Decano crear un nuevo Período Académico de Assessment (ej: 2026-2, 2027-1).
+    /// </summary>
+    [HttpPost("periodos")]
+    [ProducesResponseType(typeof(RespuestaApi<PeriodoAcademico>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RespuestaApi<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CrearPeriodo([FromBody] CrearPeriodoAcademicoDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Codigo) || string.IsNullOrWhiteSpace(dto.Nombre))
+        {
+            return BadRequest(RespuestaApi<object>.RespuestaError("El código y nombre del período son requeridos."));
+        }
+
+        var existe = await _contexto.PeriodosAcademicos
+            .AnyAsync(p => p.Codigo.ToLower() == dto.Codigo.Trim().ToLower());
+
+        if (existe)
+        {
+            return BadRequest(RespuestaApi<object>.RespuestaError($"El período con código '{dto.Codigo}' ya existe en el sistema."));
+        }
+
+        if (dto.EsActual)
+        {
+            var periodosPrevios = await _contexto.PeriodosAcademicos.Where(p => p.EsActual).ToListAsync();
+            foreach (var p in periodosPrevios)
+            {
+                p.EsActual = false;
+            }
+        }
+
+        var nuevoPeriodo = new PeriodoAcademico
+        {
+            Codigo = dto.Codigo.Trim(),
+            Nombre = dto.Nombre.Trim(),
+            FechaInicio = dto.FechaInicio ?? DateTime.UtcNow,
+            FechaFin = dto.FechaFin ?? DateTime.UtcNow.AddMonths(6),
+            EsActual = dto.EsActual,
+            EstaActivo = true
+        };
+
+        await _contexto.PeriodosAcademicos.AddAsync(nuevoPeriodo);
+        await _contexto.SaveChangesAsync();
+
+        return Ok(RespuestaApi<PeriodoAcademico>.RespuestaExitosa(nuevoPeriodo, $"Período académico '{nuevoPeriodo.Codigo}' creado exitosamente por Decanatura."));
+    }
+
+    /// <summary>
+    /// Retorna todos los períodos académicos registrados.
+    /// </summary>
+    [HttpGet("periodos")]
+    [ProducesResponseType(typeof(RespuestaApi<List<PeriodoAcademico>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObtenerPeriodos()
+    {
+        var periodos = await _contexto.PeriodosAcademicos
+            .OrderByDescending(p => p.EsActual)
+            .ThenByDescending(p => p.Codigo)
+            .ToListAsync();
+
+        return Ok(RespuestaApi<List<PeriodoAcademico>>.RespuestaExitosa(periodos));
+    }
 }

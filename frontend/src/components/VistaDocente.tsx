@@ -80,10 +80,15 @@ export default function VistaDocente({
   // Navegación interna del docente
   const [seccionActual, setSeccionActual] = useState<'evidencias' | 'evaluaciones' | 'bitacora' | 'dashboard' | 'cursos'>('evaluaciones');
 
-  // Filtrar o seleccionar el curso actual asignado al docente
+  const esSupervisor = usuarioActual.rol === 'LiderCalidadRA';
+
+  // Filtrar o seleccionar los cursos asignados al docente o supervisados
   const cursosDelDocente = cursosDisponibles.filter(
-    (c) => c.correoDocente.toLowerCase() === usuarioActual.correo.toLowerCase() ||
-           c.nombreDocente.toLowerCase().includes(usuarioActual.nombre.toLowerCase())
+    (c) => esSupervisor
+      ? (c.correoSupervisorRa?.toLowerCase() === usuarioActual.correo.toLowerCase() ||
+         c.nombreSupervisorRa?.toLowerCase().includes(usuarioActual.nombre.toLowerCase()))
+      : (c.correoDocente?.toLowerCase() === usuarioActual.correo.toLowerCase() ||
+         c.nombreDocente?.toLowerCase().includes(usuarioActual.nombre.toLowerCase()))
   );
 
   // Si no encuentra por coincidencia exacta, usar el primer curso disponible como muestra

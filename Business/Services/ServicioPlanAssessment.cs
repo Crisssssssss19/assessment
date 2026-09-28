@@ -157,11 +157,54 @@ public class ServicioPlanAssessment : IServicioPlanAssessment
             planExistente.EstaActivo = true;
             planExistente.ProgramaAcademicoId = progId;
 
-            // Reemplazar asignaturas
-            planExistente.AsignaturasPlan.Clear();
-            foreach (var asig in listaAsignaturasFinal)
+            // Actualizar las asignaturas del plan in-place para evitar problemas de concurrencia en EF Core
+            foreach (var nuevaAsig in listaAsignaturasFinal)
             {
-                planExistente.AsignaturasPlan.Add(asig);
+                var existente = planExistente.AsignaturasPlan.FirstOrDefault(ap =>
+                    ap.ResultadoAprendizajeId == nuevaAsig.ResultadoAprendizajeId &&
+                    ap.RolEvaluacion == nuevaAsig.RolEvaluacion);
+
+                if (existente != null)
+                {
+                    existente.AsignaturaId = nuevaAsig.AsignaturaId;
+                    existente.Semestre = nuevaAsig.Semestre;
+                    existente.MetaLogroPorcentaje = nuevaAsig.MetaLogroPorcentaje;
+                    existente.DocenteId = nuevaAsig.DocenteId;
+                    existente.LiderCalidadRaId = nuevaAsig.LiderCalidadRaId;
+                    existente.FechaActualizacion = DateTime.UtcNow;
+
+                    // Sincronizar los 3 indicadores de desempeño
+                    if (nuevaAsig.IndicadoresDesempeno != null)
+                    {
+                        var listaExistenteInd = existente.IndicadoresDesempeno.ToList();
+                        var listaNuevosInd = nuevaAsig.IndicadoresDesempeno.ToList();
+                        for (int i = 0; i < listaNuevosInd.Count; i++)
+                        {
+                            var nuevoInd = listaNuevosInd[i];
+                            if (i < listaExistenteInd.Count)
+                            {
+                                listaExistenteInd[i].Codigo = nuevoInd.Codigo;
+                                listaExistenteInd[i].Descripcion = nuevoInd.Descripcion;
+                                listaExistenteInd[i].FechaActualizacion = DateTime.UtcNow;
+                            }
+                            else
+                            {
+                                existente.IndicadoresDesempeno.Add(new IndicadorDesempeno
+                                {
+                                    Codigo = nuevoInd.Codigo,
+                                    Descripcion = nuevoInd.Descripcion,
+                                    AsignaturaPlanAssessmentId = existente.Id,
+                                    FechaCreacion = DateTime.UtcNow,
+                                    EstaActivo = true
+                                });
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    planExistente.AsignaturasPlan.Add(nuevaAsig);
+                }
             }
 
             _repositorioPlan.Actualizar(planExistente);

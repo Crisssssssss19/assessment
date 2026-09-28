@@ -42,6 +42,8 @@ public class DatosInicialesController : ControllerBase
 
         var periodos = await _contexto.PeriodosAcademicos
             .Where(p => p.EstaActivo)
+            .OrderByDescending(p => p.EsActual)
+            .ThenByDescending(p => p.Codigo)
             .Select(p => new ItemDto(p.Id, p.Codigo, p.Nombre, null, null, null))
             .ToListAsync();
 
