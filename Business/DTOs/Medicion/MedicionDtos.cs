@@ -14,7 +14,8 @@ public record CrearMedicionDto(
 
 public record RevisarMedicionDto(
     bool Aprobado,
-    string? Observaciones
+    string? Observaciones,
+    string? PlanMejora = null
 );
 
 public record EvidenciaDto(

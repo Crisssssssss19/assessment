@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   ShieldCheck,
   FileText,
-  BookOpen,
   LogOut,
   CheckCircle2,
   AlertTriangle,
@@ -27,17 +26,24 @@ import {
   ArrowRight,
   Filter,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Trash2,
+  Edit3,
+  Save,
+  CheckCheck
 } from 'lucide-react';
 import {
   CursoDetallado,
   obtenerEstudiantesMedicion,
+  guardarEstudiantesMedicion,
   obtenerHistorialObservaciones,
   agregarObservacionMedicion,
   revisarMedicion,
   obtenerUrlDescargaEvidenciaEstudiante,
   EvaluacionEstudianteItem,
-  ObservacionMedicionItem
+  ObservacionMedicionItem,
+  ItemEstudiantePayload
 } from '@/lib/api';
 
 interface VistaSupervisorCalidadProps {
@@ -54,15 +60,29 @@ interface VistaSupervisorCalidadProps {
   onCerrarSesion: () => void;
 }
 
+// Función determinística para obtener una clave única por curso
+export function getCursoClaveUnica(c: CursoDetallado): string {
+  if (c.asignaturaPlanId && c.asignaturaPlanId.trim() !== '') return `plan_${c.asignaturaPlanId}`;
+  if (c.medicionId && c.medicionId.trim() !== '') return `med_${c.medicionId}`;
+  return `cur_${c.codigoAsignatura}_${c.codigoRa || 'RA'}_${c.programaAcademico}_${c.tipoAssessmentNumero || c.tipoAssessment}_${c.nombreDocente || ''}`.replace(/\s+/g, '_');
+}
+
 export default function VistaSupervisorCalidad({
   usuarioActual,
   cursosDisponibles,
   onCerrarSesion
 }: VistaSupervisorCalidadProps) {
-  const [seccionActual, setSeccionActual] = useState<'dashboard' | 'auditoria' | 'bitacora' | 'reporte'>('dashboard');
+  const [seccionActual, setSeccionActual] = useState<'dashboard' | 'auditoria' | 'bitacora'>('dashboard');
   const [cargando, setCargando] = useState(false);
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
+
+  // Lista local de cursos para permitir actualizaciones en vivo
+  const [cursosLocales, setCursosLocales] = useState<CursoDetallado[]>(cursosDisponibles);
+
+  useEffect(() => {
+    setCursosLocales(cursosDisponibles);
+  }, [cursosDisponibles]);
 
   // Filtros
   const [filtroPrograma, setFiltroPrograma] = useState<string>('todos');
@@ -71,10 +91,23 @@ export default function VistaSupervisorCalidad({
   const [filtroRa, setFiltroRa] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState<string>('');
 
-  // Curso actualmente en auditoría
-  const [cursoSeleccionadoId, setCursoSeleccionadoId] = useState<string | null>(null);
+  // Clave del curso actualmente seleccionado
+  const [cursoSeleccionadoClave, setCursoSeleccionadoClave] = useState<string>('');
+
+  // Estudiantes y notas
   const [estudiantesCurso, setEstudiantesCurso] = useState<EvaluacionEstudianteItem[]>([]);
   const [cargandoEstudiantes, setCargandoEstudiantes] = useState(false);
+
+  // Formulario para agregar estudiante
+  const [mostrarFormEstudiante, setMostrarFormEstudiante] = useState(false);
+  const [nuevoEstCodigo, setNuevoEstCodigo] = useState('');
+  const [nuevoEstNombre, setNuevoEstNombre] = useState('');
+  const [nuevoEstNota, setNuevoEstNota] = useState<number>(85);
+
+  // Edición rápida de análisis y plan de mejora
+  const [editandoAnalisis, setEditandoAnalisis] = useState(false);
+  const [analisisCualitativoEdit, setAnalisisCualitativoEdit] = useState('');
+  const [planMejoraEdit, setPlanMejoraEdit] = useState('');
 
   // Bitácora de observaciones
   const [observacionesCurso, setObservacionesCurso] = useState<ObservacionMedicionItem[]>([]);
@@ -89,15 +122,14 @@ export default function VistaSupervisorCalidad({
 
   // Identificar los cursos asignados a este Supervisor de Calidad
   const cursosSupervisados = useMemo(() => {
-    const asignados = cursosDisponibles.filter((c) => {
+    const asignados = cursosLocales.filter((c) => {
       const matchCorreo = c.correoSupervisorRa?.toLowerCase() === usuarioActual.correo.toLowerCase();
       const matchNombre = c.nombreSupervisorRa?.toLowerCase().includes(usuarioActual.nombre.toLowerCase());
       return matchCorreo || matchNombre;
     });
 
-    // Si por datos demo no hay coincidencia exacta, mostrar todos los cursos para auditoría
-    return asignados.length > 0 ? asignados : cursosDisponibles;
-  }, [cursosDisponibles, usuarioActual]);
+    return asignados.length > 0 ? asignados : cursosLocales;
+  }, [cursosLocales, usuarioActual]);
 
   // Lista única de RAs supervisados
   const rasSupervisados = useMemo(() => {
@@ -142,22 +174,42 @@ export default function VistaSupervisorCalidad({
     });
   }, [cursosSupervisados, filtroPrograma, filtroRa, filtroTipo, filtroEstado, busqueda]);
 
-  // Curso activo para auditoría
-  const cursoActivo = useMemo(() => {
-    if (!cursoSeleccionadoId) {
-      return cursosFiltrados.length > 0 ? cursosFiltrados[0] : null;
+  // Curso activo para auditoría garantizado
+  const cursoActivo: CursoDetallado | null = useMemo(() => {
+    if (cursosLocales.length === 0) return null;
+    if (cursoSeleccionadoClave) {
+      const encontrado = cursosLocales.find((c) => getCursoClaveUnica(c) === cursoSeleccionadoClave);
+      if (encontrado) return encontrado;
     }
-    return cursosSupervisados.find((c) => (c.medicionId || c.asignaturaPlanId) === cursoSeleccionadoId) || cursosFiltrados[0] || null;
-  }, [cursoSeleccionadoId, cursosFiltrados, cursosSupervisados]);
+    if (cursosFiltrados.length > 0) return cursosFiltrados[0];
+    return cursosSupervisados[0] || cursosLocales[0] || null;
+  }, [cursoSeleccionadoClave, cursosFiltrados, cursosSupervisados, cursosLocales]);
+
+  // Inicializar selección
+  useEffect(() => {
+    if (!cursoSeleccionadoClave && cursosFiltrados.length > 0) {
+      setCursoSeleccionadoClave(getCursoClaveUnica(cursosFiltrados[0]));
+    }
+  }, [cursosFiltrados, cursoSeleccionadoClave]);
+
+  // Sincronizar campos de edición cuando cambia el curso activo
+  useEffect(() => {
+    if (cursoActivo) {
+      setAnalisisCualitativoEdit(cursoActivo.analisisCualitativo || '');
+      setPlanMejoraEdit(cursoActivo.planMejora || '');
+      setDictamenPlanMejora(cursoActivo.planMejora || '');
+      setDictamenObservacion('');
+      setEditandoAnalisis(false);
+    }
+  }, [cursoActivo]);
 
   // Cargar estudiantes y bitácora cuando cambia el curso activo
   useEffect(() => {
     if (!cursoActivo) return;
 
-    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId;
+    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId || cursoActivo.asignaturaId;
     if (!idConsulta) return;
 
-    // Cargar estudiantes
     setCargandoEstudiantes(true);
     obtenerEstudiantesMedicion(idConsulta, usuarioActual.token || 'demo-token')
       .then((res) => {
@@ -166,27 +218,22 @@ export default function VistaSupervisorCalidad({
       .catch(() => setEstudiantesCurso([]))
       .finally(() => setCargandoEstudiantes(false));
 
-    // Cargar bitácora si hay medicionId
-    if (cursoActivo.medicionId) {
-      setCargandoBitacora(true);
-      obtenerHistorialObservaciones(cursoActivo.medicionId, usuarioActual.token || 'demo-token')
-        .then((obs) => {
-          setObservacionesCurso(obs);
-        })
-        .catch(() => setObservacionesCurso([]))
-        .finally(() => setCargandoBitacora(false));
-    } else {
-      setObservacionesCurso([]);
-    }
+    setCargandoBitacora(true);
+    obtenerHistorialObservaciones(idConsulta, usuarioActual.token || 'demo-token')
+      .then((obs) => {
+        setObservacionesCurso(obs);
+      })
+      .catch(() => setObservacionesCurso([]))
+      .finally(() => setCargandoBitacora(false));
   }, [cursoActivo, usuarioActual.token]);
 
   // Métricas para el Dashboard del Supervisor
   const metricas = useMemo(() => {
     const total = cursosSupervisados.length;
-    const aprobados = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 2).length;
-    const enRevision = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 1).length;
-    const devueltos = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 3).length;
-    const pendientes = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 0).length;
+    const aprobados = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 2 || c.estadoEvaluacion === 'Aprobado').length;
+    const enRevision = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 1 || c.estadoEvaluacion === 'EnRevision' || c.estadoEvaluacion === 'En Revisión').length;
+    const devueltos = cursosSupervisados.filter((c) => c.estadoEvaluacionNumero === 3 || c.estadoEvaluacion === 'Devuelto').length;
+    const pendientes = cursosSupervisados.filter((c) => !c.estadoEvaluacionNumero || c.estadoEvaluacionNumero === 0 || c.estadoEvaluacion === 'Pendiente').length;
 
     const totalEstudiantesEvaluados = cursosSupervisados.reduce((acc, c) => acc + (c.totalEstudiantesEvaluados || 0), 0);
     const sumatoriaLogro = cursosSupervisados.reduce((acc, c) => acc + (c.porcentajeCumplimiento || 0), 0);
@@ -206,16 +253,10 @@ export default function VistaSupervisorCalidad({
   // Manejar el dictamen de revisión (Aprobar o Devolver)
   const handleEmitirDictamen = async (aprobado: boolean) => {
     if (!cursoActivo) return;
-    const medicionId = cursoActivo.medicionId;
-
-    if (!medicionId) {
-      setMensajeError('El docente aún no ha registrado la medición inicial para este curso.');
-      setTimeout(() => setMensajeError(null), 4000);
-      return;
-    }
+    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId || cursoActivo.asignaturaId;
 
     if (!dictamenObservacion.trim()) {
-      setMensajeError('Por favor ingrese las observaciones del dictamen técnico antes de continuar.');
+      setMensajeError('Por favor redacte las observaciones técnicas del dictamen antes de continuar.');
       setTimeout(() => setMensajeError(null), 4000);
       return;
     }
@@ -225,7 +266,7 @@ export default function VistaSupervisorCalidad({
     setMensajeExito(null);
 
     const res = await revisarMedicion(
-      medicionId,
+      idConsulta,
       aprobado,
       dictamenObservacion.trim(),
       dictamenPlanMejora.trim() || undefined,
@@ -234,17 +275,32 @@ export default function VistaSupervisorCalidad({
 
     setGuardandoDictamen(false);
 
-    if (res.exitoso) {
-      setMensajeExito(res.mensaje);
+    if (res.exitoso || res.datos) {
+      setMensajeExito(res.mensaje || (aprobado ? 'Medición de calidad aprobada exitosamente.' : 'Medición devuelta con observaciones.'));
       setDictamenObservacion('');
-      setDictamenPlanMejora('');
 
       // Actualizar estado local del curso
-      cursoActivo.estadoEvaluacionNumero = aprobado ? 2 : 3;
-      cursoActivo.estadoEvaluacion = aprobado ? 'Aprobado' : 'Devuelto';
+      const nuevoEstadoTexto = aprobado ? 'Aprobado' : 'Devuelto';
+      const nuevoEstadoNum = aprobado ? 2 : 3;
+
+      const claveActual = getCursoClaveUnica(cursoActivo);
+
+      setCursosLocales((prev) =>
+        prev.map((c) => {
+          if (getCursoClaveUnica(c) === claveActual) {
+            return {
+              ...c,
+              estadoEvaluacion: nuevoEstadoTexto,
+              estadoEvaluacionNumero: nuevoEstadoNum,
+              planMejora: dictamenPlanMejora.trim() || c.planMejora
+            };
+          }
+          return c;
+        })
+      );
 
       // Recargar bitácora
-      const obsActualizadas = await obtenerHistorialObservaciones(medicionId, usuarioActual.token || 'demo-token');
+      const obsActualizadas = await obtenerHistorialObservaciones(idConsulta, usuarioActual.token || 'demo-token');
       setObservacionesCurso(obsActualizadas);
 
       setTimeout(() => setMensajeExito(null), 4000);
@@ -254,28 +310,127 @@ export default function VistaSupervisorCalidad({
     }
   };
 
+  // Guardar edición del análisis cualitativo y plan de mejora
+  const handleGuardarAnalisis = async () => {
+    if (!cursoActivo) return;
+    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId || cursoActivo.asignaturaId;
+    const claveActual = getCursoClaveUnica(cursoActivo);
+
+    setCargando(true);
+    // Registrar observación en bitácora reflejando el cambio
+    await agregarObservacionMedicion(
+      idConsulta,
+      `Actualización de análisis cualitativo y plan de mejora: ${analisisCualitativoEdit.substring(0, 80)}...`,
+      undefined,
+      usuarioActual.token || 'demo-token'
+    );
+    setCargando(false);
+
+    // Actualizar localmente
+    setCursosLocales((prev) =>
+      prev.map((c) => {
+        if (getCursoClaveUnica(c) === claveActual) {
+          return {
+            ...c,
+            analisisCualitativo: analisisCualitativoEdit,
+            planMejora: planMejoraEdit
+          };
+        }
+        return c;
+      })
+    );
+
+    setEditandoAnalisis(false);
+    setMensajeExito('Análisis cualitativo y plan de mejora guardados correctamente.');
+    setTimeout(() => setMensajeExito(null), 3000);
+  };
+
   // Manejar el envío de una nueva observación en la bitácora
   const handleEnviarObservacion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevaObservacionTexto.trim() || !cursoActivo?.medicionId) return;
+    if (!nuevaObservacionTexto.trim() || !cursoActivo) return;
+    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId || cursoActivo.asignaturaId;
 
     setEnviandoObservacion(true);
     const res = await agregarObservacionMedicion(
-      cursoActivo.medicionId,
+      idConsulta,
       nuevaObservacionTexto.trim(),
       undefined,
       usuarioActual.token || 'demo-token'
     );
     setEnviandoObservacion(false);
 
-    if (res.exitoso) {
+    if (res.exitoso || res.datos) {
       setNuevaObservacionTexto('');
-      const obsActualizadas = await obtenerHistorialObservaciones(cursoActivo.medicionId, usuarioActual.token || 'demo-token');
+      const obsActualizadas = await obtenerHistorialObservaciones(idConsulta, usuarioActual.token || 'demo-token');
       setObservacionesCurso(obsActualizadas);
       setMensajeExito('Observación agregada a la bitácora de auditoría.');
       setTimeout(() => setMensajeExito(null), 3000);
     } else {
       setMensajeError(res.mensaje || 'Error al enviar observación.');
+      setTimeout(() => setMensajeError(null), 4000);
+    }
+  };
+
+  // Manejar agregar estudiante a la evaluación del curso
+  const handleAgregarEstudiante = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cursoActivo || !nuevoEstCodigo.trim() || !nuevoEstNombre.trim()) return;
+    const idConsulta = cursoActivo.medicionId || cursoActivo.asignaturaPlanId || cursoActivo.asignaturaId;
+
+    const payload: ItemEstudiantePayload = {
+      codigoEstudiante: nuevoEstCodigo.trim(),
+      nombreEstudiante: nuevoEstNombre.trim(),
+      calificacion: Number(nuevoEstNota),
+      observaciones: 'Agregado durante proceso de auditoría y muestreo de calidad.'
+    };
+
+    setCargando(true);
+    const res = await guardarEstudiantesMedicion(idConsulta, [payload], usuarioActual.token || 'demo-token');
+    setCargando(false);
+
+    if (res.exitoso || res.datos) {
+      setMensajeExito('Estudiante registrado en la matriz de calificaciones.');
+      setMostrarFormEstudiante(false);
+      setNuevoEstCodigo('');
+      setNuevoEstNombre('');
+      setNuevoEstNota(85);
+
+      // Recargar estudiantes
+      const estActualizados = await obtenerEstudiantesMedicion(idConsulta, usuarioActual.token || 'demo-token');
+      setEstudiantesCurso(estActualizados);
+
+      // Recalcular métricas cuantitativas locales
+      if (estActualizados.length > 0) {
+        const c90 = estActualizados.filter((st) => st.calificacion >= 90).length;
+        const c70 = estActualizados.filter((st) => st.calificacion >= 70 && st.calificacion < 90).length;
+        const c60 = estActualizados.filter((st) => st.calificacion >= 60 && st.calificacion < 70).length;
+        const c0 = estActualizados.filter((st) => st.calificacion < 60).length;
+        const cumplieron = estActualizados.filter((st) => st.calificacion >= 70).length;
+        const porc = Math.round((cumplieron / estActualizados.length) * 100);
+
+        const claveActual = getCursoClaveUnica(cursoActivo);
+        setCursosLocales((prev) =>
+          prev.map((c) => {
+            if (getCursoClaveUnica(c) === claveActual) {
+              return {
+                ...c,
+                totalEstudiantesEvaluados: estActualizados.length,
+                porcentajeCumplimiento: porc,
+                cantidadNivel90a100: c90,
+                cantidadNivel70a89: c70,
+                cantidadNivel60a69: c60,
+                cantidadNivel0a59: c0
+              };
+            }
+            return c;
+          })
+        );
+      }
+
+      setTimeout(() => setMensajeExito(null), 3000);
+    } else {
+      setMensajeError(res.mensaje || 'Error al guardar estudiante.');
       setTimeout(() => setMensajeError(null), 4000);
     }
   };
@@ -357,6 +512,7 @@ export default function VistaSupervisorCalidad({
               </span>
               <nav className="space-y-1">
                 <button
+                  type="button"
                   onClick={() => setSeccionActual('dashboard')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     seccionActual === 'dashboard'
@@ -369,6 +525,7 @@ export default function VistaSupervisorCalidad({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setSeccionActual('auditoria')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     seccionActual === 'auditoria'
@@ -381,6 +538,7 @@ export default function VistaSupervisorCalidad({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setSeccionActual('bitacora')}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     seccionActual === 'bitacora'
@@ -437,6 +595,7 @@ export default function VistaSupervisorCalidad({
                     Período: 2026-1 (Vigente)
                   </span>
                   <button
+                    type="button"
                     onClick={() => setSeccionActual('auditoria')}
                     className="inline-flex items-center gap-2 bg-[#004b87] hover:bg-[#003865] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
@@ -491,8 +650,9 @@ export default function VistaSupervisorCalidad({
                     </p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setSeccionActual('auditoria')}
-                    className="text-xs text-[#004b87] font-bold hover:underline"
+                    className="text-xs text-[#004b87] font-bold hover:underline cursor-pointer"
                   >
                     Ver panel detallado de auditoría
                   </button>
@@ -514,13 +674,18 @@ export default function VistaSupervisorCalidad({
                     </thead>
                     <tbody className="divide-y divide-[#e2e8f0]">
                       {cursosSupervisados.map((curso) => {
+                        const clave = getCursoClaveUnica(curso);
                         let estadoBadge = 'bg-slate-100 text-slate-700 border-slate-300';
-                        if (curso.estadoEvaluacionNumero === 2) estadoBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-                        else if (curso.estadoEvaluacionNumero === 1) estadoBadge = 'bg-sky-100 text-sky-800 border-sky-300';
-                        else if (curso.estadoEvaluacionNumero === 3) estadoBadge = 'bg-amber-100 text-amber-800 border-amber-300';
+                        if (curso.estadoEvaluacionNumero === 2 || curso.estadoEvaluacion === 'Aprobado') {
+                          estadoBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                        } else if (curso.estadoEvaluacionNumero === 1 || curso.estadoEvaluacion === 'EnRevision' || curso.estadoEvaluacion === 'En Revisión') {
+                          estadoBadge = 'bg-sky-100 text-sky-800 border-sky-300';
+                        } else if (curso.estadoEvaluacionNumero === 3 || curso.estadoEvaluacion === 'Devuelto') {
+                          estadoBadge = 'bg-amber-100 text-amber-800 border-amber-300';
+                        }
 
                         return (
-                          <tr key={curso.asignaturaPlanId || curso.codigoAsignatura} className="hover:bg-[#f8fafc] transition-colors">
+                          <tr key={clave} className="hover:bg-[#f8fafc] transition-colors">
                             <td className="py-3 px-4 font-mono font-bold text-[#004b87]">{curso.codigoAsignatura}</td>
                             <td className="py-3 px-4 font-bold text-[#0f172a]">{curso.nombreAsignatura}</td>
                             <td className="py-3 px-4 text-[#475569]">{curso.programaAcademico}</td>
@@ -532,17 +697,17 @@ export default function VistaSupervisorCalidad({
                             <td className="py-3 px-4 text-[#0f172a] font-medium">{curso.nombreDocente}</td>
                             <td className="py-3 px-4">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${estadoBadge}`}>
-                                {curso.estadoEvaluacion}
+                                {curso.estadoEvaluacion || 'Pendiente'}
                               </span>
                             </td>
                             <td className="py-3 px-4 font-bold text-[#003865]">
-                              {curso.porcentajeCumplimiento}%
+                              {curso.porcentajeCumplimiento || 0}%
                             </td>
                             <td className="py-3 px-4 text-right">
                               <button
+                                type="button"
                                 onClick={() => {
-                                  const id = curso.medicionId || curso.asignaturaPlanId || curso.codigoAsignatura;
-                                  setCursoSeleccionadoId(id);
+                                  setCursoSeleccionadoClave(clave);
                                   setSeccionActual('auditoria');
                                 }}
                                 className="px-3 py-1 bg-[#004b87] hover:bg-[#003865] text-white rounded text-xs font-bold transition-colors cursor-pointer"
@@ -565,8 +730,8 @@ export default function VistaSupervisorCalidad({
           {/* ========================================================= */}
           {seccionActual === 'auditoria' && (
             <div className="space-y-6 max-w-7xl mx-auto">
-              {/* BARRA DE FILTROS */}
-              <div className="bg-white border border-[#cbd5e1] rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              {/* BARRA DE FILTROS Y SELECTOR RÁPIDO */}
+              <div className="bg-white border border-[#cbd5e1] rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Selector de Programa */}
                   <div>
@@ -578,7 +743,7 @@ export default function VistaSupervisorCalidad({
                       onChange={(e) => setFiltroPrograma(e.target.value)}
                       className="bg-white border border-[#94a3b8] rounded-md px-3 py-1.5 text-xs text-[#003865] font-semibold focus:outline-none"
                     >
-                      <option value="todos">Todos los Programas</option>
+                      <option value="todos">Todos los Programas ({programasSupervisados.length})</option>
                       {programasSupervisados.map((prog) => (
                         <option key={prog} value={prog}>{prog}</option>
                       ))}
@@ -636,39 +801,42 @@ export default function VistaSupervisorCalidad({
                 </div>
               </div>
 
-              {/* GRID PRINCIPAL: SELECTOR DE CURSOS (IZQUIERDA) + PANEL DE AUDITORÍA (DERECHA) */}
+              {/* GRID PRINCIPAL: LISTADO DE CURSOS (IZQUIERDA) + DETALLE DE AUDITORÍA (DERECHA) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 {/* LISTA LATERAL DE CURSOS FILTRADOS (4 COLUMNAS) */}
                 <div className="lg:col-span-4 bg-white border border-[#cbd5e1] rounded-xl p-4 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-[#e2e8f0]">
                     <h3 className="text-xs font-bold text-[#003865] uppercase">
-                      Cursos ({cursosFiltrados.length})
+                      Cursos Asignados ({cursosFiltrados.length})
                     </h3>
-                    <span className="text-[11px] text-[#64748b]">Selecciona uno para auditar</span>
+                    <span className="text-[11px] text-[#64748b]">Selecciona para auditar</span>
                   </div>
 
                   <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
                     {cursosFiltrados.map((curso) => {
-                      const id = curso.medicionId || curso.asignaturaPlanId || curso.codigoAsignatura;
-                      const esSeleccionado = cursoActivo && (
-                        cursoActivo.medicionId === id ||
-                        cursoActivo.asignaturaPlanId === id ||
-                        cursoActivo.codigoAsignatura === id
-                      );
+                      const clave = getCursoClaveUnica(curso);
+                      const esSeleccionado = cursoActivo && getCursoClaveUnica(cursoActivo) === clave;
 
                       let estadoBadge = 'bg-slate-100 text-slate-700 border-slate-300';
-                      if (curso.estadoEvaluacionNumero === 2) estadoBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-                      else if (curso.estadoEvaluacionNumero === 1) estadoBadge = 'bg-sky-100 text-sky-800 border-sky-300';
-                      else if (curso.estadoEvaluacionNumero === 3) estadoBadge = 'bg-amber-100 text-amber-800 border-amber-300';
+                      if (curso.estadoEvaluacionNumero === 2 || curso.estadoEvaluacion === 'Aprobado') {
+                        estadoBadge = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                      } else if (curso.estadoEvaluacionNumero === 1 || curso.estadoEvaluacion === 'EnRevision' || curso.estadoEvaluacion === 'En Revisión') {
+                        estadoBadge = 'bg-sky-100 text-sky-800 border-sky-300';
+                      } else if (curso.estadoEvaluacionNumero === 3 || curso.estadoEvaluacion === 'Devuelto') {
+                        estadoBadge = 'bg-amber-100 text-amber-800 border-amber-300';
+                      }
 
                       return (
                         <button
-                          key={id}
-                          onClick={() => setCursoSeleccionadoId(id)}
+                          key={clave}
+                          type="button"
+                          onClick={() => {
+                            setCursoSeleccionadoClave(clave);
+                          }}
                           className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                             esSeleccionado
-                              ? 'bg-[#e8f1f8] border-[#004b87] shadow-xs'
-                              : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1]'
+                              ? 'bg-[#e8f1f8] border-[#004b87] ring-2 ring-[#004b87]/30 shadow-xs'
+                              : 'bg-white border-[#e2e8f0] hover:border-[#cbd5e1] hover:bg-[#f8fafc]'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-1">
@@ -676,14 +844,14 @@ export default function VistaSupervisorCalidad({
                               {curso.codigoAsignatura}
                             </span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${estadoBadge}`}>
-                              {curso.estadoEvaluacion}
+                              {curso.estadoEvaluacion || 'Pendiente'}
                             </span>
                           </div>
                           <h4 className="text-xs font-bold text-[#0f172a] line-clamp-1">{curso.nombreAsignatura}</h4>
                           <p className="text-[11px] text-[#64748b] mt-0.5 line-clamp-1">{curso.programaAcademico}</p>
                           <div className="flex items-center justify-between text-[10px] text-[#475569] mt-2 pt-2 border-t border-[#e2e8f0]/60">
                             <span>Docente: <strong className="text-[#003865]">{curso.nombreDocente}</strong></span>
-                            <span className="font-bold text-[#004b87]">{curso.porcentajeCumplimiento}% Logro</span>
+                            <span className="font-bold text-[#004b87]">{curso.porcentajeCumplimiento || 0}% Logro</span>
                           </div>
                         </button>
                       );
@@ -698,8 +866,8 @@ export default function VistaSupervisorCalidad({
                       {/* FICHA TÉCNICA DEL CURSO EN AUDITORÍA */}
                       <div className="bg-white border border-[#cbd5e1] rounded-xl p-6 shadow-2xs space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-[#e2e8f0] pb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
                               <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded bg-[#004b87] text-white">
                                 {cursoActivo.codigoAsignatura}
                               </span>
@@ -712,22 +880,22 @@ export default function VistaSupervisorCalidad({
                             </div>
                             <h2 className="text-xl font-black text-[#003865]">{cursoActivo.nombreAsignatura}</h2>
                             <p className="text-xs font-semibold text-[#005a9c]">
-                              {cursoActivo.programaAcademico} • Facultad de Ingeniería
+                              {cursoActivo.programaAcademico} • Docente: <span className="text-[#003865] font-bold">{cursoActivo.nombreDocente}</span>
                             </p>
                           </div>
 
                           <div className="text-right shrink-0">
                             <span className="text-[10px] font-bold text-[#64748b] uppercase block">Estado de Auditoría</span>
                             <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold border ${
-                              cursoActivo.estadoEvaluacionNumero === 2
+                              cursoActivo.estadoEvaluacionNumero === 2 || cursoActivo.estadoEvaluacion === 'Aprobado'
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : cursoActivo.estadoEvaluacionNumero === 1
+                                : cursoActivo.estadoEvaluacionNumero === 1 || cursoActivo.estadoEvaluacion === 'EnRevision' || cursoActivo.estadoEvaluacion === 'En Revisión'
                                 ? 'bg-sky-100 text-sky-800 border-sky-300'
-                                : cursoActivo.estadoEvaluacionNumero === 3
+                                : cursoActivo.estadoEvaluacionNumero === 3 || cursoActivo.estadoEvaluacion === 'Devuelto'
                                 ? 'bg-amber-100 text-amber-800 border-amber-300'
                                 : 'bg-slate-100 text-slate-700 border-slate-300'
                             }`}>
-                              {cursoActivo.estadoEvaluacion}
+                              {cursoActivo.estadoEvaluacion || 'Pendiente'}
                             </span>
                           </div>
                         </div>
@@ -747,12 +915,18 @@ export default function VistaSupervisorCalidad({
                               Indicadores de Desempeño Evaluados:
                             </span>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              {cursoActivo.indicadores.map((ind, i) => (
-                                <div key={i} className="p-2.5 bg-white border border-[#e2e8f0] rounded-lg text-xs">
-                                  <span className="font-mono font-bold text-[#004b87] block mb-0.5">{ind.codigo}</span>
-                                  <p className="text-[#475569] leading-tight text-[11px]">{ind.descripcion}</p>
+                              {cursoActivo.indicadores && cursoActivo.indicadores.length > 0 ? (
+                                cursoActivo.indicadores.map((ind, i) => (
+                                  <div key={i} className="p-2.5 bg-white border border-[#e2e8f0] rounded-lg text-xs">
+                                    <span className="font-mono font-bold text-[#004b87] block mb-0.5">{ind.codigo}</span>
+                                    <p className="text-[#475569] leading-tight text-[11px]">{ind.descripcion}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-3 text-xs text-[#64748b] italic">
+                                  3 Indicadores de Desempeño asignados formalmente por el Plan de Assessment.
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
                         </div>
@@ -760,24 +934,24 @@ export default function VistaSupervisorCalidad({
                         {/* DESGLOSE CUANTITATIVO DE EVALUACIÓN */}
                         <div>
                           <h3 className="text-xs font-bold text-[#003865] uppercase tracking-wider mb-3">
-                            Resultados Cuantitativos del Grupo ({cursoActivo.totalEstudiantesEvaluados || estudiantesCurso.length} Estudiantes)
+                            Resultados Cuantitativos del Grupo ({cursoActivo.totalEstudiantesEvaluados || estudiantesCurso.length} Estudiantes Evaluados)
                           </h3>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                               <span className="text-[10px] font-bold text-emerald-800 uppercase block">90 - 100% (Excelente)</span>
-                              <div className="text-xl font-black text-emerald-700 mt-1">{cursoActivo.cantidadNivel90a100}</div>
+                              <div className="text-xl font-black text-emerald-700 mt-1">{cursoActivo.cantidadNivel90a100 || 0}</div>
                             </div>
                             <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl">
                               <span className="text-[10px] font-bold text-sky-800 uppercase block">70 - 89% (Satisfactorio)</span>
-                              <div className="text-xl font-black text-sky-700 mt-1">{cursoActivo.cantidadNivel70a89}</div>
+                              <div className="text-xl font-black text-sky-700 mt-1">{cursoActivo.cantidadNivel70a89 || 0}</div>
                             </div>
                             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                               <span className="text-[10px] font-bold text-amber-800 uppercase block">60 - 69% (En Desarrollo)</span>
-                              <div className="text-xl font-black text-amber-700 mt-1">{cursoActivo.cantidadNivel60a69}</div>
+                              <div className="text-xl font-black text-amber-700 mt-1">{cursoActivo.cantidadNivel60a69 || 0}</div>
                             </div>
                             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl">
                               <span className="text-[10px] font-bold text-rose-800 uppercase block">0 - 59% (No Alcanzado)</span>
-                              <div className="text-xl font-black text-rose-700 mt-1">{cursoActivo.cantidadNivel0a59}</div>
+                              <div className="text-xl font-black text-rose-700 mt-1">{cursoActivo.cantidadNivel0a59 || 0}</div>
                             </div>
                           </div>
                         </div>
@@ -785,13 +959,84 @@ export default function VistaSupervisorCalidad({
                         {/* MATRIZ DE ESTUDIANTES Y DESCARGA DE EVIDENCIAS */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-xs font-bold text-[#003865] uppercase tracking-wider">
-                              Matriz de Calificaciones Individuales y Evidencias
-                            </h3>
-                            <span className="text-[11px] text-[#64748b]">
-                              {estudiantesCurso.length} estudiantes registrados
-                            </span>
+                            <div>
+                              <h3 className="text-xs font-bold text-[#003865] uppercase tracking-wider">
+                                Matriz de Calificaciones Individuales y Evidencias
+                              </h3>
+                              <span className="text-[11px] text-[#64748b]">
+                                {estudiantesCurso.length} estudiantes registrados en la muestra
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setMostrarFormEstudiante(!mostrarFormEstudiante)}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#004b87] hover:text-[#003865] bg-[#e8f1f8] hover:bg-[#dbeafe] px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-[#bcd6ea]"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{mostrarFormEstudiante ? 'Ocultar Formulario' : 'Agregar Muestra Estudiante'}</span>
+                            </button>
                           </div>
+
+                          {/* FORMULARIO AGREGAR ESTUDIANTE */}
+                          {mostrarFormEstudiante && (
+                            <form onSubmit={handleAgregarEstudiante} className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl mb-3 space-y-3">
+                              <span className="text-xs font-bold text-[#003865] uppercase block">
+                                Registrar nuevo estudiante para muestreo de auditoría:
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-1">Código</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="2022114001"
+                                    value={nuevoEstCodigo}
+                                    onChange={(e) => setNuevoEstCodigo(e.target.value)}
+                                    className="w-full bg-white border border-[#94a3b8] rounded px-3 py-1.5 text-xs focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-1">Nombres y Apellidos</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Estudiante Ejemplo"
+                                    value={nuevoEstNombre}
+                                    onChange={(e) => setNuevoEstNombre(e.target.value)}
+                                    className="w-full bg-white border border-[#94a3b8] rounded px-3 py-1.5 text-xs focus:outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase text-[#64748b] block mb-1">Calificación (0 - 100)</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    required
+                                    value={nuevoEstNota}
+                                    onChange={(e) => setNuevoEstNota(Number(e.target.value))}
+                                    className="w-full bg-white border border-[#94a3b8] rounded px-3 py-1.5 text-xs focus:outline-none font-bold text-[#003865]"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setMostrarFormEstudiante(false)}
+                                  className="px-3 py-1 rounded text-xs font-semibold text-[#64748b] hover:bg-white"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="submit"
+                                  disabled={cargando}
+                                  className="px-4 py-1.5 rounded text-xs font-bold bg-[#004b87] hover:bg-[#003865] text-white shadow-xs cursor-pointer"
+                                >
+                                  Guardar Estudiante
+                                </button>
+                              </div>
+                            </form>
+                          )}
 
                           {cargandoEstudiantes ? (
                             <div className="p-6 text-center text-xs text-[#64748b]">
@@ -826,7 +1071,7 @@ export default function VistaSupervisorCalidad({
                                         </span>
                                       </td>
                                       <td className="py-2 px-3 text-right">
-                                        {est.tieneEvidencia ? (
+                                        {est.nombreArchivoEvidencia || est.tieneEvidencia ? (
                                           <a
                                             href={obtenerUrlDescargaEvidenciaEstudiante(est.id)}
                                             target="_blank"
@@ -834,10 +1079,10 @@ export default function VistaSupervisorCalidad({
                                             className="inline-flex items-center gap-1 text-[11px] font-bold text-[#004b87] hover:underline bg-[#e8f1f8] px-2.5 py-1 rounded border border-[#bcd6ea]"
                                           >
                                             <Download className="w-3 h-3" />
-                                            Descargar ({est.nombreArchivoEvidencia || 'Archivo'})
+                                            Descargar ({est.nombreArchivoEvidencia || 'Evidencia'})
                                           </a>
                                         ) : (
-                                          <span className="text-[11px] text-[#94a3b8] italic">Sin evidencia</span>
+                                          <span className="text-[11px] text-[#94a3b8] italic">Sin evidencia cargada</span>
                                         )}
                                       </td>
                                     </tr>
@@ -847,34 +1092,95 @@ export default function VistaSupervisorCalidad({
                             </div>
                           ) : (
                             <div className="p-6 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-xl text-center text-xs text-[#64748b]">
-                              No se encontraron registros de estudiantes cargados por el docente para este curso.
+                              No se encontraron registros de estudiantes cargados para este curso. Puedes agregar estudiantes con el botón superior para simular la evaluación.
                             </div>
                           )}
                         </div>
 
-                        {/* ANÁLISIS CUALITATIVO Y PLAN DE MEJORA DEL DOCENTE */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                          <div className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-1.5">
-                            <span className="text-[11px] font-bold text-[#003865] uppercase block">
-                              Análisis Cualitativo del Docente:
+                        {/* ANÁLISIS CUALITATIVO Y PLAN DE MEJORA (EDITABLE) */}
+                        <div className="pt-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-[#003865] uppercase">
+                              Análisis Cualitativo y Plan de Mejora Docente
                             </span>
-                            <p className="text-xs text-[#334155] leading-relaxed">
-                              {cursoActivo.analisisCualitativo || 'El docente no ha registrado un análisis cualitativo descriptivo aún.'}
-                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setEditandoAnalisis(!editandoAnalisis)}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#004b87] hover:text-[#003865] bg-[#e8f1f8] px-2.5 py-1 rounded-md border border-[#bcd6ea] cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>{editandoAnalisis ? 'Cancelar Edición' : 'Editar Análisis'}</span>
+                            </button>
                           </div>
 
-                          <div className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-1.5">
-                            <span className="text-[11px] font-bold text-[#003865] uppercase block">
-                              Plan de Mejora Propuesto:
-                            </span>
-                            <p className="text-xs text-[#334155] leading-relaxed">
-                              {cursoActivo.planMejora || 'Sin plan de mejora especificado en la medición.'}
-                            </p>
-                          </div>
+                          {editandoAnalisis ? (
+                            <div className="p-4 bg-[#f8fafc] border border-[#004b87] rounded-xl space-y-3">
+                              <div>
+                                <label className="text-xs font-bold text-[#003865] uppercase block mb-1">
+                                  Análisis Cualitativo de Desempeño:
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  value={analisisCualitativoEdit}
+                                  onChange={(e) => setAnalisisCualitativoEdit(e.target.value)}
+                                  className="w-full bg-white border border-[#94a3b8] rounded-lg p-3 text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-[#003865] uppercase block mb-1">
+                                  Plan de Mejora Propuesto:
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  value={planMejoraEdit}
+                                  onChange={(e) => setPlanMejoraEdit(e.target.value)}
+                                  className="w-full bg-white border border-[#94a3b8] rounded-lg p-3 text-xs text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#004b87]"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditandoAnalisis(false)}
+                                  className="px-3 py-1.5 rounded text-xs font-semibold text-[#64748b] hover:bg-white cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleGuardarAnalisis}
+                                  disabled={cargando}
+                                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-bold bg-[#004b87] hover:bg-[#003865] text-white shadow-xs cursor-pointer"
+                                >
+                                  <Save className="w-3.5 h-3.5" />
+                                  <span>Guardar Cambios</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-1.5">
+                                <span className="text-[11px] font-bold text-[#003865] uppercase block">
+                                  Análisis Cualitativo del Docente:
+                                </span>
+                                <p className="text-xs text-[#334155] leading-relaxed">
+                                  {cursoActivo.analisisCualitativo || 'El docente no ha registrado un análisis cualitativo descriptivo aún.'}
+                                </p>
+                              </div>
+
+                              <div className="p-4 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-1.5">
+                                <span className="text-[11px] font-bold text-[#003865] uppercase block">
+                                  Plan de Mejora Registrado:
+                                </span>
+                                <p className="text-xs text-[#334155] leading-relaxed">
+                                  {cursoActivo.planMejora || 'Sin plan de mejora especificado en la medición.'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* PANEL DE DICTAMEN DE AUDITORÍA Y OBSERVACIONES FORMALES */}
+                      {/* PANEL DE DICTAMEN DE AUDITORÍA Y OBSERVACIONES FORMALES (100% EDITABLE) */}
                       <div className="bg-gradient-to-r from-[#e8f1f8] to-[#dbeafe] border-2 border-[#004b87] rounded-xl p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-[#bcd6ea] pb-3">
                           <div className="flex items-center gap-2">
@@ -891,7 +1197,7 @@ export default function VistaSupervisorCalidad({
                         <div className="space-y-3">
                           <div>
                             <label className="text-xs font-bold text-[#003865] uppercase block mb-1">
-                              Observaciones Técnicas de Calidad (Obligatorio para aprobación o devolución) *
+                              Observaciones Técnicas de Calidad (Obligatorio para dictamen) *
                             </label>
                             <textarea
                               rows={3}
@@ -969,7 +1275,7 @@ export default function VistaSupervisorCalidad({
                     <span className="text-xs text-[#475569] block">{cursoActivo.programaAcademico} • Docente: {cursoActivo.nombreDocente}</span>
                   </div>
                   <span className="text-xs font-bold px-3 py-1 bg-white border border-[#cbd5e1] rounded-full text-[#003865]">
-                    Estado: {cursoActivo.estadoEvaluacion}
+                    Estado: {cursoActivo.estadoEvaluacion || 'Pendiente'}
                   </span>
                 </div>
               )}

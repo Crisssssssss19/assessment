@@ -22,7 +22,7 @@ public class EvaluacionesEstudiantesController : ControladorApiBase
     /// Registra o actualiza la lista de estudiantes y sus notas para una medición (Docente).
     /// </summary>
     [HttpPost("medicion/{medicionId:guid}")]
-    [Authorize(Roles = RolesSistema.Docente)]
+    [Authorize(Roles = $"{RolesSistema.Docente},{RolesSistema.LiderCalidadRA},{RolesSistema.LiderPrograma},{RolesSistema.Decano},{RolesSistema.LiderCalidadFacultad}")]
     [ProducesResponseType(typeof(RespuestaApi<List<EvaluacionEstudianteRespuestaDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(RespuestaApi<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegistrarEstudiantes([FromRoute] Guid medicionId, [FromBody] RegistrarEstudiantesMedicionDto dto)

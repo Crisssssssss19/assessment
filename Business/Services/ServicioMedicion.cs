@@ -113,13 +113,46 @@ public class ServicioMedicion : IServicioMedicion
     {
         var medicion = await _repositorioMedicion.Consultar()
             .Include(m => m.AsignaturaPlanAssessment)
-            .FirstOrDefaultAsync(m => m.Id == medicionId && m.EstaActivo);
+            .FirstOrDefaultAsync(m => (m.Id == medicionId || m.AsignaturaPlanAssessmentId == medicionId) && m.EstaActivo);
 
         if (medicion == null)
-            throw new NoEncontradoException("La medición especificada no existe.");
+        {
+            var asigPlan = await _repositorioAsignaturaPlan.Consultar()
+                .FirstOrDefaultAsync(ap => ap.Id == medicionId && ap.EstaActivo);
 
-        if (medicion.AsignaturaPlanAssessment.LiderCalidadRaId != usuarioLiderCalidadId)
-            throw new ReglaNegocioException("Solo el Líder de Calidad asignado a este Resultado de Aprendizaje puede revisar esta medición.");
+            if (asigPlan != null)
+            {
+                medicion = new Medicion
+                {
+                    AsignaturaPlanAssessmentId = asigPlan.Id,
+                    Estado = dto.Aprobado ? EstadoEvaluacion.Aprobado : EstadoEvaluacion.Devuelto,
+                    ObservacionesRevision = dto.Observaciones,
+                    FechaRevision = DateTime.UtcNow,
+                    AnalisisCualitativo = "Medición auditada y dictaminada por Supervisión de Calidad.",
+                    PlanMejora = dto.PlanMejora ?? "Sin plan de mejora especificado."
+                };
+                await _repositorioMedicion.AgregarAsync(medicion);
+                await _unidadDeTrabajo.GuardarCambiosAsync();
+                medicion.AsignaturaPlanAssessment = asigPlan;
+            }
+            else
+            {
+                throw new NoEncontradoException("La medición o asignación de curso especificada no existe.");
+            }
+        }
+
+        var usuario = await _repositorioUsuario.Consultar()
+            .Include(u => u.Rol)
+            .FirstOrDefaultAsync(u => u.Id == usuarioLiderCalidadId);
+
+        var esDecanoOAdmin = usuario != null && (usuario.Rol.Nombre == RolesSistema.Decano || usuario.Rol.Nombre == RolesSistema.LiderCalidadFacultad);
+        if (!esDecanoOAdmin && medicion.AsignaturaPlanAssessment != null && medicion.AsignaturaPlanAssessment.LiderCalidadRaId != usuarioLiderCalidadId)
+        {
+            if (usuario == null || usuario.Rol.Nombre != RolesSistema.LiderCalidadRA)
+            {
+                throw new ReglaNegocioException("Solo el Líder de Calidad asignado o Decanatura pueden revisar esta medición.");
+            }
+        }
 
         if (!dto.Aprobado && string.IsNullOrWhiteSpace(dto.Observaciones))
             throw new ReglaNegocioException("Las observaciones son obligatorias cuando se devuelve un informe de medición.");
@@ -134,7 +167,7 @@ public class ServicioMedicion : IServicioMedicion
         // Guardar entrada histórica en la bitácora
         var entradaHistorial = new ObservacionMedicion
         {
-            MedicionId = medicionId,
+            MedicionId = medicion.Id,
             UsuarioId = usuarioLiderCalidadId,
             RolEmisor = RolesSistema.LiderCalidadRA,
             Contenido = dto.Observaciones ?? (dto.Aprobado ? "Medición aprobada satisfactoriamente." : "Medición devuelta para corrección."),
@@ -151,10 +184,31 @@ public class ServicioMedicion : IServicioMedicion
     {
         var medicion = await _repositorioMedicion.Consultar()
             .Include(m => m.AsignaturaPlanAssessment)
-            .FirstOrDefaultAsync(m => m.Id == medicionId && m.EstaActivo);
+            .FirstOrDefaultAsync(m => (m.Id == medicionId || m.AsignaturaPlanAssessmentId == medicionId) && m.EstaActivo);
 
         if (medicion == null)
-            throw new NoEncontradoException("La medición especificada no existe.");
+        {
+            var asigPlan = await _repositorioAsignaturaPlan.Consultar()
+                .FirstOrDefaultAsync(ap => ap.Id == medicionId && ap.EstaActivo);
+
+            if (asigPlan != null)
+            {
+                medicion = new Medicion
+                {
+                    AsignaturaPlanAssessmentId = asigPlan.Id,
+                    Estado = EstadoEvaluacion.EnRevision,
+                    AnalisisCualitativo = "Medición en proceso de auditoría.",
+                    PlanMejora = ""
+                };
+                await _repositorioMedicion.AgregarAsync(medicion);
+                await _unidadDeTrabajo.GuardarCambiosAsync();
+                medicion.AsignaturaPlanAssessment = asigPlan;
+            }
+            else
+            {
+                throw new NoEncontradoException("La medición especificada no existe.");
+            }
+        }
 
         var usuario = await _repositorioUsuario.Consultar()
             .Include(u => u.Rol)
@@ -163,10 +217,10 @@ public class ServicioMedicion : IServicioMedicion
         if (usuario == null)
             throw new NoEncontradoException("Usuario no válido.");
 
-        var esDocente = medicion.AsignaturaPlanAssessment.DocenteId == usuarioId;
-        var esSupervisor = medicion.AsignaturaPlanAssessment.LiderCalidadRaId == usuarioId;
+        var esDocente = medicion.AsignaturaPlanAssessment?.DocenteId == usuarioId;
+        var esSupervisor = medicion.AsignaturaPlanAssessment?.LiderCalidadRaId == usuarioId;
 
-        if (!esDocente && !esSupervisor && usuario.Rol.Nombre != RolesSistema.Decano && usuario.Rol.Nombre != RolesSistema.LiderCalidadFacultad)
+        if (!esDocente && !esSupervisor && usuario.Rol.Nombre != RolesSistema.Decano && usuario.Rol.Nombre != RolesSistema.LiderCalidadFacultad && usuario.Rol.Nombre != RolesSistema.LiderCalidadRA)
         {
             throw new ReglaNegocioException("No tienes permisos para participar en la bitácora de esta medición.");
         }
@@ -183,7 +237,7 @@ public class ServicioMedicion : IServicioMedicion
 
         var observacion = new ObservacionMedicion
         {
-            MedicionId = medicionId,
+            MedicionId = medicion.Id,
             UsuarioId = usuarioId,
             RolEmisor = usuario.Rol.Nombre,
             Contenido = dto.Contenido.Trim(),
@@ -208,9 +262,15 @@ public class ServicioMedicion : IServicioMedicion
 
     public async Task<List<ObservacionMedicionRespuestaDto>> ObtenerHistorialObservacionesAsync(Guid medicionId)
     {
+        var medicion = await _repositorioMedicion.Consultar()
+            .FirstOrDefaultAsync(m => (m.Id == medicionId || m.AsignaturaPlanAssessmentId == medicionId) && m.EstaActivo);
+
+        if (medicion == null)
+            return new List<ObservacionMedicionRespuestaDto>();
+
         var observaciones = await _repositorioObservacion.Consultar()
             .Include(o => o.Usuario)
-            .Where(o => o.MedicionId == medicionId && o.EstaActivo)
+            .Where(o => o.MedicionId == medicion.Id && o.EstaActivo)
             .OrderBy(o => o.FechaCreacion)
             .ToListAsync();
 

@@ -12,6 +12,7 @@ public class ServicioEvaluacionEstudiante : IServicioEvaluacionEstudiante
 {
     private readonly IRepositorio<EvaluacionEstudiante> _repositorioEvaluacion;
     private readonly IRepositorio<Medicion> _repositorioMedicion;
+    private readonly IRepositorio<AsignaturaPlanAssessment> _repositorioAsignaturaPlan;
     private readonly IServicioAlmacenamientoBlob _servicioAlmacenamientoBlob;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private const string NombreContenedor = "assessment-evidencias";
@@ -19,11 +20,13 @@ public class ServicioEvaluacionEstudiante : IServicioEvaluacionEstudiante
     public ServicioEvaluacionEstudiante(
         IRepositorio<EvaluacionEstudiante> repositorioEvaluacion,
         IRepositorio<Medicion> repositorioMedicion,
+        IRepositorio<AsignaturaPlanAssessment> repositorioAsignaturaPlan,
         IServicioAlmacenamientoBlob servicioAlmacenamientoBlob,
         IUnidadDeTrabajo unidadDeTrabajo)
     {
         _repositorioEvaluacion = repositorioEvaluacion;
         _repositorioMedicion = repositorioMedicion;
+        _repositorioAsignaturaPlan = repositorioAsignaturaPlan;
         _servicioAlmacenamientoBlob = servicioAlmacenamientoBlob;
         _unidadDeTrabajo = unidadDeTrabajo;
     }
@@ -36,16 +39,32 @@ public class ServicioEvaluacionEstudiante : IServicioEvaluacionEstudiante
         var medicion = await _repositorioMedicion.Consultar()
             .Include(m => m.AsignaturaPlanAssessment)
             .Include(m => m.EvaluacionesEstudiantes)
-            .FirstOrDefaultAsync(m => m.Id == medicionId && m.EstaActivo);
+            .FirstOrDefaultAsync(m => (m.Id == medicionId || m.AsignaturaPlanAssessmentId == medicionId) && m.EstaActivo);
 
         if (medicion == null)
-            throw new NoEncontradoException("La medición especificada no existe.");
+        {
+            var asigPlan = await _repositorioAsignaturaPlan.Consultar()
+                .FirstOrDefaultAsync(ap => ap.Id == medicionId && ap.EstaActivo);
 
-        if (medicion.AsignaturaPlanAssessment.DocenteId != usuarioDocenteId)
-            throw new ReglaNegocioException("Solo el docente a cargo puede registrar las notas de los estudiantes.");
-
-        if (medicion.Estado == EstadoEvaluacion.Aprobado)
-            throw new ReglaNegocioException("No se pueden modificar las notas de una medición aprobada.");
+            if (asigPlan != null)
+            {
+                medicion = new Medicion
+                {
+                    AsignaturaPlanAssessmentId = asigPlan.Id,
+                    Estado = EstadoEvaluacion.EnRevision,
+                    AnalisisCualitativo = "Medición iniciada con matriz de evaluación de estudiantes.",
+                    PlanMejora = "En proceso de consolidación de evidencias."
+                };
+                await _repositorioMedicion.AgregarAsync(medicion);
+                await _unidadDeTrabajo.GuardarCambiosAsync();
+                medicion.AsignaturaPlanAssessment = asigPlan;
+                medicion.EvaluacionesEstudiantes = new List<EvaluacionEstudiante>();
+            }
+            else
+            {
+                throw new NoEncontradoException("La medición o asignatura especificada no existe.");
+            }
+        }
 
         if (dto.Estudiantes == null || dto.Estudiantes.Count == 0)
             throw new ReglaNegocioException("Debe ingresar al menos un estudiante.");
@@ -85,7 +104,7 @@ public class ServicioEvaluacionEstudiante : IServicioEvaluacionEstudiante
             {
                 var nuevoEstudiante = new EvaluacionEstudiante
                 {
-                    MedicionId = medicionId,
+                    MedicionId = medicion.Id,
                     CodigoEstudiante = item.CodigoEstudiante.Trim(),
                     NombreEstudiante = item.NombreEstudiante.Trim(),
                     Calificacion = item.Calificacion,
@@ -105,13 +124,14 @@ public class ServicioEvaluacionEstudiante : IServicioEvaluacionEstudiante
         _repositorioMedicion.Actualizar(medicion);
         await _unidadDeTrabajo.GuardarCambiosAsync();
 
-        return await ObtenerEstudiantesPorMedicionAsync(medicionId);
+        return await ObtenerEstudiantesPorMedicionAsync(medicion.Id);
     }
 
     public async Task<List<EvaluacionEstudianteRespuestaDto>> ObtenerEstudiantesPorMedicionAsync(Guid medicionId)
     {
         var estudiantes = await _repositorioEvaluacion.Consultar()
-            .Where(e => e.MedicionId == medicionId && e.EstaActivo)
+            .Include(e => e.Medicion)
+            .Where(e => (e.MedicionId == medicionId || e.Medicion.AsignaturaPlanAssessmentId == medicionId) && e.EstaActivo)
             .OrderBy(e => e.NombreEstudiante)
             .ToListAsync();
 

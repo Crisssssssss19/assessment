@@ -44,7 +44,18 @@ public class PlanesAssessmentController : ControllerBase
         string CorreoSupervisorRa,
         string EstadoEvaluacion,
         int TotalEvidencias,
-        List<IndicadorCursoDetalleDto> Indicadores
+        List<IndicadorCursoDetalleDto> Indicadores,
+        Guid? AsignaturaPlanId = null,
+        Guid? MedicionId = null,
+        int EstadoEvaluacionNumero = 0,
+        int TotalEstudiantesEvaluados = 0,
+        double PorcentajeCumplimiento = 0,
+        int CantidadNivel90a100 = 0,
+        int CantidadNivel70a89 = 0,
+        int CantidadNivel60a69 = 0,
+        int CantidadNivel0a59 = 0,
+        string? AnalisisCualitativo = null,
+        string? PlanMejora = null
     );
 
     /// <summary>
@@ -101,6 +112,19 @@ public class PlanesAssessmentController : ControllerBase
 
                 var evidenciasCount = asigPlan.Medicion?.Evidencias?.Count ?? 0;
                 var estado = asigPlan.Medicion?.Estado.ToString() ?? "Pendiente";
+                var estadoNum = asigPlan.Medicion != null ? (int)asigPlan.Medicion.Estado : 0;
+
+                var totalEst = asigPlan.Medicion?.TotalEstudiantesEvaluados ?? 0;
+                var c90 = asigPlan.Medicion?.CantidadNivel90a100 ?? 0;
+                var c70 = asigPlan.Medicion?.CantidadNivel70a89 ?? 0;
+                var c60 = asigPlan.Medicion?.CantidadNivel60a69 ?? 0;
+                var c0 = asigPlan.Medicion?.CantidadNivel0a59 ?? 0;
+
+                double pctCumplimiento = 0;
+                if (totalEst > 0)
+                {
+                    pctCumplimiento = Math.Round(((c70 + c90) * 100.0) / totalEst, 1);
+                }
 
                 var indicadores = asigPlan.IndicadoresDesempeno.Select(i => 
                     new IndicadorCursoDetalleDto(i.Codigo, i.Descripcion)).ToList();
@@ -125,7 +149,18 @@ public class PlanesAssessmentController : ControllerBase
                     asigPlan.LiderCalidadRa?.CorreoElectronico ?? string.Empty,
                     estado,
                     evidenciasCount,
-                    indicadores
+                    indicadores,
+                    asigPlan.Id,
+                    asigPlan.Medicion?.Id,
+                    estadoNum,
+                    totalEst,
+                    pctCumplimiento,
+                    c90,
+                    c70,
+                    c60,
+                    c0,
+                    asigPlan.Medicion?.AnalisisCualitativo,
+                    asigPlan.Medicion?.PlanMejora
                 ));
             }
         }
