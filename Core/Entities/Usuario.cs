@@ -13,4 +13,6 @@ public class Usuario : EntidadBase
     // Si el usuario es Líder de Programa, se asocia a su programa académico asignado
     public Guid? ProgramaAcademicoId { get; set; }
     public ProgramaAcademico? ProgramaAcademico { get; set; }
+
+    public string NombreCompleto => $"{Nombres} {Apellidos}".Trim();
 }

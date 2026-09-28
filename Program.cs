@@ -24,6 +24,7 @@ builder.Services.AddScoped<IServicioAlmacenamientoBlob, ServicioAlmacenamientoBl
 builder.Services.AddScoped<IServicioPlanAssessment, ServicioPlanAssessment>();
 builder.Services.AddScoped<IServicioMedicion, ServicioMedicion>();
 builder.Services.AddScoped<IServicioEvidencia, ServicioEvidencia>();
+builder.Services.AddScoped<IServicioEvaluacionEstudiante, ServicioEvaluacionEstudiante>();
 
 // 3. Autenticación JWT y Autorización RBAC
 builder.Services.AgregarAutenticacionJwt(builder.Configuration);

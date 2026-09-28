@@ -22,4 +22,6 @@ public class Medicion : EntidadBase
     public DateTime? FechaRevision { get; set; }
 
     public ICollection<Evidencia> Evidencias { get; set; } = new List<Evidencia>();
+    public ICollection<EvaluacionEstudiante> EvaluacionesEstudiantes { get; set; } = new List<EvaluacionEstudiante>();
+    public ICollection<ObservacionMedicion> ObservacionesHistorial { get; set; } = new List<ObservacionMedicion>();
 }

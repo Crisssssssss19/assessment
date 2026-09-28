@@ -21,6 +21,8 @@ public class ContextoAplicacionDb : DbContext
     public DbSet<IndicadorDesempeno> IndicadoresDesempeno => Set<IndicadorDesempeno>();
     public DbSet<Medicion> Mediciones => Set<Medicion>();
     public DbSet<Evidencia> Evidencias => Set<Evidencia>();
+    public DbSet<EvaluacionEstudiante> EvaluacionesEstudiantes => Set<EvaluacionEstudiante>();
+    public DbSet<ObservacionMedicion> ObservacionesMediciones => Set<ObservacionMedicion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

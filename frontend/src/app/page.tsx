@@ -1577,13 +1577,13 @@ export default function AssessmentApp() {
 
                     <div className="space-y-3">
                       {configActual.indicadores.map((ind, iIdx) => (
-                        <div key={iIdx} className="flex items-center gap-4 bg-[#f8fafc] border border-[#cbd5e1] p-3 rounded-lg">
-                          <span className="text-xs font-mono font-bold px-2.5 py-1 bg-[#004b87] text-white rounded-md shrink-0">
+                        <div key={iIdx} className="flex items-start gap-3.5 bg-[#f8fafc] border border-[#cbd5e1] p-3 rounded-lg hover:border-[#94a3b8] transition-colors">
+                          <span className="text-xs font-mono font-bold px-2.5 py-1 bg-[#004b87] text-white rounded-md shrink-0 mt-0.5">
                             {ind.codigo}
                           </span>
-                          <input
-                            type="text"
+                          <textarea
                             disabled={esDecano}
+                            rows={2}
                             value={ind.descripcion}
                             onChange={(e) => {
                               const newInds = [...configActual.indicadores];
@@ -1594,7 +1594,7 @@ export default function AssessmentApp() {
                               });
                             }}
                             placeholder="Descripción del indicador de desempeño..."
-                            className={`flex-1 bg-transparent border-0 text-xs font-medium text-[#1e293b] focus:outline-none ${esDecano ? 'cursor-not-allowed opacity-80' : ''}`}
+                            className={`flex-1 bg-transparent border-0 text-xs font-medium text-[#1e293b] focus:outline-none resize-y min-h-[44px] leading-relaxed ${esDecano ? 'cursor-not-allowed opacity-80' : ''}`}
                           />
                         </div>
                       ))}

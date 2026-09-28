@@ -12,15 +12,21 @@ public class ServicioMedicion : IServicioMedicion
 {
     private readonly IRepositorio<Medicion> _repositorioMedicion;
     private readonly IRepositorio<AsignaturaPlanAssessment> _repositorioAsignaturaPlan;
+    private readonly IRepositorio<ObservacionMedicion> _repositorioObservacion;
+    private readonly IRepositorio<Usuario> _repositorioUsuario;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
 
     public ServicioMedicion(
         IRepositorio<Medicion> repositorioMedicion,
         IRepositorio<AsignaturaPlanAssessment> repositorioAsignaturaPlan,
+        IRepositorio<ObservacionMedicion> repositorioObservacion,
+        IRepositorio<Usuario> repositorioUsuario,
         IUnidadDeTrabajo unidadDeTrabajo)
     {
         _repositorioMedicion = repositorioMedicion;
         _repositorioAsignaturaPlan = repositorioAsignaturaPlan;
+        _repositorioObservacion = repositorioObservacion;
+        _repositorioUsuario = repositorioUsuario;
         _unidadDeTrabajo = unidadDeTrabajo;
     }
 
@@ -83,6 +89,23 @@ public class ServicioMedicion : IServicioMedicion
         }
 
         await _unidadDeTrabajo.GuardarCambiosAsync();
+
+        // Registrar entrada automática en bitácora
+        var usuarioDocente = await _repositorioUsuario.ObtenerPorIdAsync(usuarioDocenteId);
+        if (usuarioDocente != null)
+        {
+            var entradaBitacora = new ObservacionMedicion
+            {
+                MedicionId = medicion.Id,
+                UsuarioId = usuarioDocenteId,
+                RolEmisor = "Docente",
+                Contenido = "El docente envió el informe y las evidencias para revisión del Líder de Calidad.",
+                EstadoResultante = EstadoEvaluacion.EnRevision
+            };
+            await _repositorioObservacion.AgregarAsync(entradaBitacora);
+            await _unidadDeTrabajo.GuardarCambiosAsync();
+        }
+
         return await ObtenerPorIdAsync(medicion.Id);
     }
 
@@ -101,14 +124,107 @@ public class ServicioMedicion : IServicioMedicion
         if (!dto.Aprobado && string.IsNullOrWhiteSpace(dto.Observaciones))
             throw new ReglaNegocioException("Las observaciones son obligatorias cuando se devuelve un informe de medición.");
 
-        medicion.Estado = dto.Aprobado ? EstadoEvaluacion.Aprobado : EstadoEvaluacion.Devuelto;
+        var nuevoEstado = dto.Aprobado ? EstadoEvaluacion.Aprobado : EstadoEvaluacion.Devuelto;
+        medicion.Estado = nuevoEstado;
         medicion.ObservacionesRevision = dto.Observaciones;
         medicion.FechaRevision = DateTime.UtcNow;
 
         _repositorioMedicion.Actualizar(medicion);
+
+        // Guardar entrada histórica en la bitácora
+        var entradaHistorial = new ObservacionMedicion
+        {
+            MedicionId = medicionId,
+            UsuarioId = usuarioLiderCalidadId,
+            RolEmisor = RolesSistema.LiderCalidadRA,
+            Contenido = dto.Observaciones ?? (dto.Aprobado ? "Medición aprobada satisfactoriamente." : "Medición devuelta para corrección."),
+            EstadoResultante = nuevoEstado
+        };
+        await _repositorioObservacion.AgregarAsync(entradaHistorial);
+
         await _unidadDeTrabajo.GuardarCambiosAsync();
 
         return await ObtenerPorIdAsync(medicion.Id);
+    }
+
+    public async Task<ObservacionMedicionRespuestaDto> AgregarObservacionAsync(Guid medicionId, CrearObservacionDto dto, Guid usuarioId)
+    {
+        var medicion = await _repositorioMedicion.Consultar()
+            .Include(m => m.AsignaturaPlanAssessment)
+            .FirstOrDefaultAsync(m => m.Id == medicionId && m.EstaActivo);
+
+        if (medicion == null)
+            throw new NoEncontradoException("La medición especificada no existe.");
+
+        var usuario = await _repositorioUsuario.Consultar()
+            .Include(u => u.Rol)
+            .FirstOrDefaultAsync(u => u.Id == usuarioId && u.EstaActivo);
+
+        if (usuario == null)
+            throw new NoEncontradoException("Usuario no válido.");
+
+        var esDocente = medicion.AsignaturaPlanAssessment.DocenteId == usuarioId;
+        var esSupervisor = medicion.AsignaturaPlanAssessment.LiderCalidadRaId == usuarioId;
+
+        if (!esDocente && !esSupervisor && usuario.Rol.Nombre != RolesSistema.Decano && usuario.Rol.Nombre != RolesSistema.LiderCalidadFacultad)
+        {
+            throw new ReglaNegocioException("No tienes permisos para participar en la bitácora de esta medición.");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Contenido))
+            throw new ReglaNegocioException("El contenido de la observación o respuesta no puede estar vacío.");
+
+        var estadoActual = dto.NuevoEstado ?? medicion.Estado;
+        if (dto.NuevoEstado.HasValue)
+        {
+            medicion.Estado = dto.NuevoEstado.Value;
+            _repositorioMedicion.Actualizar(medicion);
+        }
+
+        var observacion = new ObservacionMedicion
+        {
+            MedicionId = medicionId,
+            UsuarioId = usuarioId,
+            RolEmisor = usuario.Rol.Nombre,
+            Contenido = dto.Contenido.Trim(),
+            EstadoResultante = estadoActual
+        };
+
+        await _repositorioObservacion.AgregarAsync(observacion);
+        await _unidadDeTrabajo.GuardarCambiosAsync();
+
+        return new ObservacionMedicionRespuestaDto(
+            observacion.Id,
+            observacion.MedicionId,
+            usuario.Id,
+            usuario.NombreCompleto,
+            usuario.CorreoElectronico,
+            observacion.RolEmisor,
+            observacion.Contenido,
+            observacion.EstadoResultante,
+            observacion.FechaCreacion
+        );
+    }
+
+    public async Task<List<ObservacionMedicionRespuestaDto>> ObtenerHistorialObservacionesAsync(Guid medicionId)
+    {
+        var observaciones = await _repositorioObservacion.Consultar()
+            .Include(o => o.Usuario)
+            .Where(o => o.MedicionId == medicionId && o.EstaActivo)
+            .OrderBy(o => o.FechaCreacion)
+            .ToListAsync();
+
+        return observaciones.Select(o => new ObservacionMedicionRespuestaDto(
+            o.Id,
+            o.MedicionId,
+            o.UsuarioId,
+            o.Usuario?.NombreCompleto ?? "Usuario",
+            o.Usuario?.CorreoElectronico ?? "",
+            o.RolEmisor,
+            o.Contenido,
+            o.EstadoResultante,
+            o.FechaCreacion
+        )).ToList();
     }
 
     public async Task<MedicionRespuestaDto> ObtenerPorIdAsync(Guid medicionId)

@@ -440,3 +440,201 @@ export async function verificarEstadoBackend(): Promise<{ conectado: boolean; ur
     return { conectado: false, url: API_BASE_URL, mensaje: 'Modo offline / desarrollo local (API en ' + API_BASE_URL + ')' };
   }
 }
+
+export interface EvaluacionEstudianteItem {
+  id: string;
+  medicionId: string;
+  codigoEstudiante: string;
+  nombreEstudiante: string;
+  calificacion: number;
+  rangoDesempeno: string;
+  nombreArchivoEvidencia?: string | null;
+  uriBlobEvidencia?: string | null;
+  tipoContenidoEvidencia?: string | null;
+  tamanoArchivoBytes?: number | null;
+  observaciones?: string | null;
+}
+
+export interface ItemEstudiantePayload {
+  codigoEstudiante: string;
+  nombreEstudiante: string;
+  calificacion: number;
+  observaciones?: string | null;
+}
+
+export async function obtenerEstudiantesMedicion(medicionId: string, token: string = 'demo-token'): Promise<EvaluacionEstudianteItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/evaluaciones-estudiantes/medicion/${medicionId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.datos || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function guardarEstudiantesMedicion(
+  medicionId: string,
+  estudiantes: ItemEstudiantePayload[],
+  token: string = 'demo-token'
+): Promise<{ exitoso: boolean; mensaje: string; datos?: EvaluacionEstudianteItem[] }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/evaluaciones-estudiantes/medicion/${medicionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ estudiantes })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.mensaje || 'Error al guardar notas de estudiantes.');
+    }
+    return {
+      exitoso: true,
+      mensaje: data.mensaje || 'Estudiantes guardados exitosamente.',
+      datos: data.datos
+    };
+  } catch (err: any) {
+    return {
+      exitoso: false,
+      mensaje: err?.message || 'Error al registrar estudiantes en el servidor.'
+    };
+  }
+}
+
+export async function cargarEvidenciaEstudiante(
+  estudianteId: string,
+  archivo: File,
+  token: string = 'demo-token'
+): Promise<{ exitoso: boolean; mensaje: string; datos?: EvaluacionEstudianteItem }> {
+  try {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+
+    const res = await fetch(`${API_BASE_URL}/evaluaciones-estudiantes/${estudianteId}/evidencia`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.mensaje || 'Error al cargar la evaluación del estudiante.');
+    }
+
+    return {
+      exitoso: true,
+      mensaje: data.mensaje || 'Evidencia del estudiante cargada con éxito en Azure Blob Storage.',
+      datos: data.datos
+    };
+  } catch (err: any) {
+    return {
+      exitoso: false,
+      mensaje: err?.message || 'Error al subir la evidencia del estudiante.'
+    };
+  }
+}
+
+export async function eliminarEvidenciaEstudiante(
+  estudianteId: string,
+  token: string = 'demo-token'
+): Promise<{ exitoso: boolean; mensaje: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/evaluaciones-estudiantes/${estudianteId}/evidencia`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.mensaje || 'Error al eliminar la evidencia del estudiante.');
+    }
+    return {
+      exitoso: true,
+      mensaje: data.mensaje || 'Evidencia eliminada correctamente.'
+    };
+  } catch (err: any) {
+    return {
+      exitoso: false,
+      mensaje: err?.message || 'Error al eliminar evidencia.'
+    };
+  }
+}
+
+export function obtenerUrlDescargaEvidenciaEstudiante(estudianteId: string): string {
+  return `${API_BASE_URL}/evaluaciones-estudiantes/${estudianteId}/evidencia/descargar`;
+}
+
+export interface ObservacionMedicionItem {
+  id: string;
+  medicionId: string;
+  usuarioId: string;
+  nombreAutor: string;
+  correoAutor: string;
+  rolEmisor: string;
+  contenido: string;
+  estadoResultante: number; // 0: Pendiente, 1: EnRevision, 2: Aprobado, 3: Devuelto
+  fechaCreacion: string;
+}
+
+export async function obtenerHistorialObservaciones(medicionId: string, token: string = 'demo-token'): Promise<ObservacionMedicionItem[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/mediciones/${medicionId}/observaciones`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.datos || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function agregarObservacionMedicion(
+  medicionId: string,
+  contenido: string,
+  nuevoEstado?: number,
+  token: string = 'demo-token'
+): Promise<{ exitoso: boolean; mensaje: string; datos?: ObservacionMedicionItem }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/mediciones/${medicionId}/observaciones`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ contenido, nuevoEstado })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.mensaje || 'Error al enviar observación.');
+    }
+    return {
+      exitoso: true,
+      mensaje: data.mensaje || 'Observación registrada en la bitácora.',
+      datos: data.datos
+    };
+  } catch (err: any) {
+    return {
+      exitoso: false,
+      mensaje: err?.message || 'Error al registrar observación.'
+    };
+  }
+}
+
+

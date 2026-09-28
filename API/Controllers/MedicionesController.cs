@@ -57,4 +57,27 @@ public class MedicionesController : ControladorApiBase
         var resultado = await _servicioMedicion.ObtenerPorIdAsync(id);
         return Ok(RespuestaApi<MedicionRespuestaDto>.RespuestaExitosa(resultado));
     }
+
+    /// <summary>
+    /// Obtiene el historial cronológico de observaciones y bitácora de una medición.
+    /// </summary>
+    [HttpGet("{id:guid}/observaciones")]
+    [ProducesResponseType(typeof(RespuestaApi<List<ObservacionMedicionRespuestaDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ObtenerObservaciones([FromRoute] Guid id)
+    {
+        var resultado = await _servicioMedicion.ObtenerHistorialObservacionesAsync(id);
+        return Ok(RespuestaApi<List<ObservacionMedicionRespuestaDto>>.RespuestaExitosa(resultado));
+    }
+
+    /// <summary>
+    /// Agrega una observación o respuesta a la bitácora de la medición (Supervisor o Docente).
+    /// </summary>
+    [HttpPost("{id:guid}/observaciones")]
+    [ProducesResponseType(typeof(RespuestaApi<ObservacionMedicionRespuestaDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(RespuestaApi<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AgregarObservacion([FromRoute] Guid id, [FromBody] CrearObservacionDto dto)
+    {
+        var resultado = await _servicioMedicion.AgregarObservacionAsync(id, dto, UsuarioActualId);
+        return Ok(RespuestaApi<ObservacionMedicionRespuestaDto>.RespuestaExitosa(resultado, "Observación agregada a la bitácora."));
+    }
 }
