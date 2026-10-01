@@ -526,7 +526,7 @@ export default function VistaDocente({
 
   return (
     <div className="h-screen max-h-screen bg-[#f1f5f9] text-[#1e293b] font-sans flex flex-col overflow-hidden">
-      {/* HEADER SUPERIOR */}
+      {/* HEADER SUPERIOR BRANDING INSTITUCIONAL */}
       <header className="h-16 bg-white border-b border-[#cbd5e1] flex items-center justify-between px-6 shrink-0 z-20 shadow-xs">
         <div className="flex items-center gap-3.5">
           <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
@@ -544,121 +544,155 @@ export default function VistaDocente({
               SISTEMA ASSESSMENT
             </h1>
             <p className="text-xs font-semibold text-[#005a9c]">
-              Universidad del Magdalena
+              Facultad de Ingeniería • Universidad del Magdalena
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="bg-[#e8f1f8] border border-[#bcd6ea] px-4 py-1.5 rounded-md text-xs font-medium text-[#003865] flex items-center gap-2 shadow-2xs">
-            <span className="font-bold">Docente:</span>
-            <span>{usuarioActual.nombre}</span>
-            <span className="text-[#94a3b8]">|</span>
-            <span className="font-bold">Periodo:</span>
-            <span>{cursoActivo.periodoAcademico || '2026-II'}</span>
+        {/* Info del Docente y Logout */}
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <span className="text-xs font-bold text-[#003865] block">{usuarioActual.nombre}</span>
+            <div className="flex items-center justify-end gap-1.5 mt-0.5">
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                Docente
+              </span>
+              <span className="text-[10px] font-mono font-bold bg-[#003865] text-white px-2 py-0.5 rounded">
+                {cursoActivo.periodoAcademico || '2026-II'}
+              </span>
+            </div>
           </div>
+          <button
+            onClick={onCerrarSesion}
+            title="Cerrar sesión"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#cbd5e1] text-xs font-semibold text-[#64748b] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+          </button>
         </div>
       </header>
 
-      {/* CONTENEDOR PRINCIPAL: SIDEBAR + CONTENIDO */}
-      <div className="flex flex-1 h-[calc(100vh-4rem)] overflow-hidden">
-        {/* SIDEBAR AZUL INSTITUCIONAL */}
-        <aside className="w-64 bg-[#004b87] text-white flex flex-col justify-between p-4 shrink-0 h-full overflow-hidden select-none shadow-md">
-          <div className="space-y-4">
-            <div className="px-2 pt-2">
-              <span className="text-[11px] font-bold tracking-widest text-[#93c5fd] uppercase block">
-                GESTIÓN DOCENTE
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* BARRA LATERAL DE NAVEGACIÓN */}
+        <aside className="w-64 bg-white border-r border-[#cbd5e1] flex flex-col justify-between shrink-0 p-4">
+          <div className="space-y-6">
+            <div>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block mb-2 px-2">
+                Menú Docente
               </span>
+              <nav className="space-y-1">
+                {/* Evaluaciones y Evidencias de Estudiantes */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionActual('evaluaciones')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seccionActual === 'evaluaciones'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Evaluación Estudiantes</span>
+                </button>
+
+                {/* Evidencias Generales del Curso */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionActual('evidencias')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seccionActual === 'evidencias'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Evidencias del Curso</span>
+                </button>
+
+                {/* Bitácora y Observaciones del Supervisor */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionActual('bitacora')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seccionActual === 'bitacora'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Bitácora / Dictamen</span>
+                  </div>
+                  {observacionesActuales.length > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      seccionActual === 'bitacora' ? 'bg-white text-[#004b87]' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {observacionesActuales.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dashboard */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionActual('dashboard')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seccionActual === 'dashboard'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Dashboard Métricas</span>
+                </button>
+
+                {/* Cursos */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionActual('cursos')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    seccionActual === 'cursos'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Mis Asignaturas</span>
+                </button>
+              </nav>
             </div>
 
-            <nav className="space-y-1.5">
-              {/* Evaluaciones y Evidencias de Estudiantes */}
-              <button
-                onClick={() => setSeccionActual('evaluaciones')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                  seccionActual === 'evaluaciones'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4 text-[#38bdf8] shrink-0" />
-                <span>Evaluación de Estudiantes</span>
-              </button>
-
-              {/* Evidencias Generales del Curso */}
-              <button
-                onClick={() => setSeccionActual('evidencias')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                  seccionActual === 'evidencias'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <FileText className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                <span>Evidencias del Curso</span>
-              </button>
-
-              {/* Bitácora y Observaciones del Supervisor */}
-              <button
-                onClick={() => setSeccionActual('bitacora')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                  seccionActual === 'bitacora'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="w-4 h-4 text-[#fbbf24] shrink-0" />
-                  <span>Bitácora y Observaciones</span>
+            {/* Resumen del Curso Activo */}
+            <div className="p-3.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-2">
+              <span className="text-[11px] font-extrabold text-[#003865] uppercase block tracking-wider">
+                Curso Activo
+              </span>
+              <div className="text-[11px] text-[#475569] space-y-1">
+                <div className="font-semibold text-[#003865] truncate" title={cursoActivo.nombreAsignatura}>
+                  {cursoActivo.codigoAsignatura} - {cursoActivo.nombreAsignatura}
                 </div>
-                {observacionesActuales.length > 0 && (
-                  <span className="bg-[#fbbf24] text-[#78350f] font-black text-[10px] px-1.5 py-0.2 rounded-full">
-                    {observacionesActuales.length}
-                  </span>
-                )}
-              </button>
-
-              {/* Dashboard */}
-              <button
-                onClick={() => setSeccionActual('dashboard')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                  seccionActual === 'dashboard'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                <span>Dashboard de Métricas</span>
-              </button>
-
-              {/* Cursos */}
-              <button
-                onClick={() => setSeccionActual('cursos')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all text-left cursor-pointer ${
-                  seccionActual === 'cursos'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                <span>Mis Cursos Asignados</span>
-              </button>
-            </nav>
+                <div>
+                  <span className="font-semibold text-[#003865]">RA:</span> {cursoActivo.codigoRa || 'RA-2'}
+                </div>
+                <div>
+                  <span className="font-semibold text-[#003865]">Tipo:</span> {cursoActivo.tipoAssessment || 'Sumativa'}
+                </div>
+                <div>
+                  <span className="font-semibold text-[#003865]">Supervisor:</span> {cursoActivo.nombreSupervisorRa || 'Líder Calidad RA'}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="pt-4 border-t border-[#003865]/60">
-            <button
-              onClick={onCerrarSesion}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-[#fed7aa] hover:bg-[#b91c1c]/20 hover:text-white transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 text-[#f87171] shrink-0" />
-              Cerrar sesión
-            </button>
+          <div className="pt-4 border-t border-[#e2e8f0] text-[10px] text-[#64748b] text-center font-medium">
+            Sistema de Acreditación ABET / CNA
           </div>
         </aside>
 
         {/* ÁREA DE CONTENIDO */}
-        <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f8fafc]">
+        <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#f1f5f9]">
           {notificacion && (
             <div
               className={`fixed top-20 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border text-xs font-medium flex items-center gap-3 animate-fade-in ${

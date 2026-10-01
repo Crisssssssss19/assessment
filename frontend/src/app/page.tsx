@@ -773,7 +773,11 @@ export default function AssessmentApp() {
           <div className="text-right">
             <span className="text-xs font-bold text-[#003865] block">{usuarioActual.nombre}</span>
             <div className="flex items-center justify-end gap-1.5 mt-0.5">
-              <span className="text-[10px] font-bold text-[#004b87] bg-[#e8f1f8] px-2 py-0.5 rounded border border-[#bcd6ea]">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                esDecano 
+                  ? 'bg-[#003865] text-white border-[#002848]' 
+                  : 'bg-[#e0f2fe] text-[#0369a1] border-[#bae6fd]'
+              }`}>
                 {usuarioActual.rol}
               </span>
               {usuarioActual.nombrePrograma && (
@@ -785,97 +789,116 @@ export default function AssessmentApp() {
           </div>
           <button
             onClick={() => setUsuarioActual(null)}
-            className="text-xs px-3.5 py-1.5 bg-[#f8fafc] hover:bg-[#e2e8f0] text-[#003865] font-semibold border border-[#cbd5e1] rounded-md transition-colors cursor-pointer"
+            title="Cerrar sesión"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#cbd5e1] text-xs font-semibold text-[#64748b] hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-colors cursor-pointer"
           >
-            Salir
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
           </button>
         </div>
       </header>
 
       {/* CONTENEDOR DE APP CON ALTURA FIJA */}
       <div className="flex flex-1 h-[calc(100vh-4rem)] overflow-hidden">
-        {/* SIDEBAR AZUL INSTITUCIONAL */}
-        <aside className="w-64 bg-[#004b87] text-white flex flex-col justify-between p-4 shrink-0 h-full overflow-hidden select-none shadow-md">
-          <div className="space-y-3">
-            <div className="px-2 pt-1">
-              <span className="text-[11px] font-bold tracking-widest text-[#93c5fd] uppercase block">
-                MENÚ PRINCIPAL
+        {/* BARRA LATERAL DE NAVEGACIÓN BLANCA INSTITUCIONAL */}
+        <aside className="w-64 bg-white border-r border-[#cbd5e1] flex flex-col justify-between shrink-0 p-4">
+          <div className="space-y-6">
+            <div>
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block mb-2 px-2">
+                Menú Principal
               </span>
+              <nav className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setVistaActual('dashboard')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    vistaActual === 'dashboard'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Dashboard General</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVistaActual('assessment');
+                    if (esDecano) setSubVistaAssessment('lista');
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    vistaActual === 'assessment'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  <span>Assessments de RAs</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setVistaActual('cursos')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    vistaActual === 'cursos'
+                      ? 'bg-[#004b87] text-white shadow-xs'
+                      : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Catálogo de Cursos</span>
+                </button>
+
+                {/* OPCIÓN EXCLUSIVA PARA EL DECANO */}
+                {esDecano && (
+                  <div className="pt-3 mt-3 border-t border-[#e2e8f0]">
+                    <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block mb-2 px-2">
+                      Administración Decanatura
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setVistaActual('asignaciones')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        vistaActual === 'asignaciones'
+                          ? 'bg-[#004b87] text-white shadow-xs'
+                          : 'text-[#475569] hover:bg-[#f1f5f9] hover:text-[#003865]'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      <span>Asignar Líderes</span>
+                    </button>
+                  </div>
+                )}
+              </nav>
             </div>
 
-            <nav className="space-y-1.5">
-              <button
-                onClick={() => setVistaActual('dashboard')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left cursor-pointer ${
-                  vistaActual === 'dashboard'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                Dashboard
-              </button>
-
-              <button
-                onClick={() => {
-                  setVistaActual('assessment');
-                  if (esDecano) setSubVistaAssessment('lista');
-                }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left cursor-pointer ${
-                  vistaActual === 'assessment'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <ClipboardList className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                Assessments
-              </button>
-
-              <button
-                onClick={() => setVistaActual('cursos')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left cursor-pointer ${
-                  vistaActual === 'cursos'
-                    ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                    : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                Cursos
-              </button>
-
-              {/* OPCIÓN EXCLUSIVA PARA EL DECANO */}
-              {esDecano && (
-                <div className="pt-3 mt-3 border-t border-[#003865]/60">
-                  <span className="text-[10px] uppercase font-bold text-[#93c5fd] px-3 tracking-wider block mb-1">
-                    Administración Decanatura
-                  </span>
-                  <button
-                    onClick={() => setVistaActual('asignaciones')}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all text-left cursor-pointer ${
-                      vistaActual === 'asignaciones'
-                        ? 'bg-[#00325d] text-white shadow-inner border-l-4 border-[#38bdf8]'
-                        : 'text-[#e0f2fe] hover:bg-[#003d70] hover:text-white'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 text-[#93c5fd] shrink-0" />
-                    Asignar Líderes (Decano)
-                  </button>
+            {/* Resumen rápido de cobertura */}
+            <div className="p-3.5 bg-[#f8fafc] border border-[#cbd5e1] rounded-xl space-y-2">
+              <span className="text-[11px] font-extrabold text-[#003865] uppercase block tracking-wider">
+                Cobertura del Plan
+              </span>
+              <div className="text-[11px] text-[#475569] space-y-1">
+                <div>
+                  <span className="font-semibold text-[#003865]">Programas:</span> 10 Ingenierías
                 </div>
-              )}
-            </nav>
+                <div>
+                  <span className="font-semibold text-[#003865]">Cursos en Matriz:</span> {cursosDetallados.length}
+                </div>
+                <div>
+                  <span className="font-semibold text-[#003865]">Periodo:</span> {periodoSeleccionado}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <button
-            onClick={() => setUsuarioActual(null)}
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold text-[#fed7aa] hover:bg-[#b91c1c]/20 hover:text-white transition-colors w-full text-left cursor-pointer border-t border-[#003865]/60 pt-3"
-          >
-            <LogOut className="w-4 h-4 text-[#f87171] shrink-0" />
-            Cerrar sesión
-          </button>
+          <div className="pt-4 border-t border-[#e2e8f0] text-[10px] text-[#64748b] text-center font-medium">
+            Sistema de Acreditación ABET / CNA
+          </div>
         </aside>
 
         {/* CONTENIDO PRINCIPAL CON SCROLL INDEPENDIENTE */}
-        <main className="flex-1 bg-[#f8fafc] overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 bg-[#f1f5f9] overflow-y-auto p-6 md:p-8">
           {mensajeExito && (
             <div className="mb-5 p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-semibold text-emerald-900 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
