@@ -1,0 +1,87 @@
+### Variables de Entorno
+@hostname = localhost
+@port = 5187
+@host = http://{{hostname}}:{{port}}
+@baseApi = {{host}}/api/v1
+@contentType = application/json
+
+# Parámetros de prueba
+@programaId = 422e222d-60f8-4a47-bf69-031161085ffc
+@programaCodigo = ING-SIS-2026
+@periodoCodigo = 2026-1
+@raCodigo = RA1
+
+###############################################################################
+# 1. AUTENTICACIÓN / USUARIOS DEMO (Opcional para obtener credenciales)
+###############################################################################
+
+### Obtener usuarios demo del sistema
+GET {{baseApi}}/autenticacion/usuarios-demo
+Accept: {{contentType}}
+
+### Iniciar sesión como Líder de Programa
+# @name loginLider
+POST {{baseApi}}/autenticacion/iniciar-sesion
+Content-Type: {{contentType}}
+
+{
+  "correoElectronico": "lider.sistemas@unimagdalena.edu.co",
+  "clave": "Clave123!"
+}
+
+@authToken = {{loginLider.response.body.datos.token}}
+
+###############################################################################
+# 2. VISTA GENERAL DE RESULTADOS DE APRENDIZAJE
+# Endpoint: GET /api/v1/planes-assessment/{programaId}/{periodoCodigo}
+# Devuelve los catálogos requeridos (programas y RAs) y los cursos con su asignación.
+###############################################################################
+
+### Vista General de Resultados de Aprendizaje (por UUID de programa)
+GET {{baseApi}}/planes-assessment/{{programaId}}/{{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Vista General de Resultados de Aprendizaje (por Código de programa)
+GET {{baseApi}}/planes-assessment/{{programaCodigo}}/{{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 3. DETALLE DE CURSOS POR RESULTADO DE APRENDIZAJE (VISTA DETALLE RA)
+# Endpoint: GET /api/v1/planes-assessment/cursos-detallados
+# Incluye asignaturas, docentes, porcentajes de logro (Destacado, Satisfactorio, Básico, Cumplimiento)
+# e indicadores de desempeño configurados.
+###############################################################################
+
+### Cursos detallados de todos los RAs para un programa y período
+GET {{baseApi}}/planes-assessment/cursos-detallados?programaId={{programaId}}&periodoCodigo={{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Cursos detallados filtrados específicamente por un RA (ej. RA1)
+GET {{baseApi}}/planes-assessment/cursos-detallados?programaId={{programaId}}&periodoCodigo={{periodoCodigo}}&codigoRa={{raCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+###############################################################################
+# 4. RESUMEN GRÁFICO Y CONCLUSIONES POR RESULTADO DE APRENDIZAJE
+# Endpoint: GET /api/v1/planes-assessment/{programaId}/{raCodigo}/resumen-grafico
+# Devuelve el desempeño por curso, meta institucional, logro global promedio, 
+# acciones implementadas, resultados obtenidos y acciones de mejora.
+###############################################################################
+
+### Resumen Gráfico del RA1
+GET {{baseApi}}/planes-assessment/{{programaId}}/{{raCodigo}}/resumen-grafico?periodoCodigo={{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Resumen Gráfico del RA2
+GET {{baseApi}}/planes-assessment/{{programaId}}/RA2/resumen-grafico?periodoCodigo={{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+### Resumen Gráfico del RA3
+GET {{baseApi}}/planes-assessment/{{programaId}}/RA3/resumen-grafico?periodoCodigo={{periodoCodigo}}
+Accept: {{contentType}}
+Authorization: Bearer {{authToken}}

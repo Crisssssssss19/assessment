@@ -76,13 +76,16 @@ export interface CursoDetallado {
   metaLogroPorcentaje: number;
   nombreDocente: string;
   correoDocente: string;
-  nombreSupervisorRa: string;
-  correoSupervisorRa: string;
+  nombreSupervisorRa?: string;
+  correoSupervisorRa?: string;
+  porcentajeDestacado?: number;
+  porcentajeSatisfactorio?: number;
+  porcentajeBasico?: number;
+  porcentajeCumplimiento?: number;
   estadoEvaluacion: string;
   estadoEvaluacionNumero?: number;
   totalEvidencias: number;
   totalEstudiantesEvaluados?: number;
-  porcentajeCumplimiento?: number;
   cantidadNivel90a100?: number;
   cantidadNivel70a89?: number;
   cantidadNivel60a69?: number;
@@ -90,6 +93,46 @@ export interface CursoDetallado {
   analisisCualitativo?: string | null;
   planMejora?: string | null;
   indicadores: IndicadorCursoDetalle[];
+}
+
+export interface ItemProgramaGeneral {
+  id: string;
+  nombre: string;
+}
+
+export interface ItemRaGeneral {
+  id: string;
+  codigo: string;
+  nombre: string;
+  descripcion?: string | null;
+}
+
+export interface ItemCursoRaGeneral {
+  codigoRa: string;
+  nombreAsignatura?: string | null;
+  tipoAssessment: string;
+}
+
+export interface VistaGeneralRaDto {
+  programas: ItemProgramaGeneral[];
+  resultadosAprendizaje: ItemRaGeneral[];
+  cursos: ItemCursoRaGeneral[];
+}
+
+export interface ResumenGraficoCurso {
+  nombre: string;
+  porcentaje: number;
+}
+
+export interface ResumenGraficoRaDto {
+  raCodigo: string;
+  nombreRa: string;
+  metaInstitucional: number;
+  logroGlobal: number;
+  cursos: ResumenGraficoCurso[];
+  accionesImplementadas: string;
+  resultadosObtenidos: string;
+  accionesMejora: string;
 }
 
 export interface IndicadorPayload {
@@ -335,12 +378,15 @@ export async function obtenerAsignacionesDecano(): Promise<EstadoAsignaciones> {
   }
 }
 
-export async function obtenerCursosDetallados(programaId?: string): Promise<CursoDetallado[]> {
+export async function obtenerCursosDetallados(programaId?: string, periodoCodigo?: string, codigoRa?: string): Promise<CursoDetallado[]> {
   try {
-    const url = programaId && programaId !== 'todos'
-      ? `${API_BASE_URL}/planes-assessment/cursos-detallados?programaId=${programaId}`
-      : `${API_BASE_URL}/planes-assessment/cursos-detallados`;
-    const res = await fetch(url);
+    const params = new URLSearchParams();
+    if (programaId && programaId !== 'todos') params.append('programaId', programaId);
+    if (periodoCodigo) params.append('periodoCodigo', periodoCodigo);
+    if (codigoRa) params.append('codigoRa', codigoRa);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE_URL}/planes-assessment/cursos-detallados${qs}`);
     if (!res.ok) throw new Error('Error al obtener cursos detallados');
     const data = await res.json();
     return (data.datos || []).map((c: any) => ({
@@ -358,6 +404,51 @@ export async function obtenerCursosDetallados(programaId?: string): Promise<Curs
     }));
   } catch {
     return [];
+  }
+}
+
+export async function obtenerVistaGeneralRa(programaId: string, periodoCodigo: string): Promise<VistaGeneralRaDto> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/planes-assessment/${programaId}/${periodoCodigo}`);
+    if (!res.ok) throw new Error('Error al obtener vista general de RA');
+    const data = await res.json();
+    return {
+      programas: (data.programas || []).map((p: any) => ({ ...p, nombre: sanitizarTexto(p.nombre) })),
+      resultadosAprendizaje: (data.resultadosAprendizaje || []).map((r: any) => ({
+        ...r,
+        nombre: sanitizarTexto(r.nombre),
+        descripcion: sanitizarTexto(r.descripcion)
+      })),
+      cursos: (data.cursos || []).map((c: any) => ({
+        ...c,
+        nombreAsignatura: sanitizarTexto(c.nombreAsignatura)
+      }))
+    };
+  } catch {
+    return { programas: [], resultadosAprendizaje: [], cursos: [] };
+  }
+}
+
+export async function obtenerResumenGraficoRa(programaId: string, raCodigo: string, periodoCodigo?: string): Promise<ResumenGraficoRaDto | null> {
+  try {
+    const qs = periodoCodigo ? `?periodoCodigo=${encodeURIComponent(periodoCodigo)}` : '';
+    const res = await fetch(`${API_BASE_URL}/planes-assessment/${programaId}/${raCodigo}/resumen-grafico${qs}`);
+    if (!res.ok) throw new Error('Error al obtener resumen gráfico del RA');
+    const json = await res.json();
+    const data = json.datos || json;
+    return {
+      ...data,
+      nombreRa: sanitizarTexto(data.nombreRa),
+      cursos: (data.cursos || []).map((c: any) => ({
+        ...c,
+        nombre: sanitizarTexto(c.nombre)
+      })),
+      accionesImplementadas: sanitizarTexto(data.accionesImplementadas),
+      resultadosObtenidos: sanitizarTexto(data.resultadosObtenidos),
+      accionesMejora: sanitizarTexto(data.accionesMejora)
+    };
+  } catch {
+    return null;
   }
 }
 

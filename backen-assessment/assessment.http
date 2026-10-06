@@ -1,0 +1,22 @@
+@assessment_HostAddress = http://localhost:5187
+@baseApi = {{assessment_HostAddress}}/api/v1
+@programaId = 422e222d-60f8-4a47-bf69-031161085ffc
+@periodoCodigo = 2026-1
+@raCodigo = RA1
+
+### 1. Vista General de Resultados de Aprendizaje
+GET {{baseApi}}/planes-assessment/{{programaId}}/{{periodoCodigo}}
+Accept: application/json
+
+### 2. Cursos Detallados del Plan de Assessment
+GET {{baseApi}}/planes-assessment/cursos-detallados?programaId={{programaId}}&periodoCodigo={{periodoCodigo}}
+Accept: application/json
+
+### 3. Cursos Detallados filtrados por RA
+GET {{baseApi}}/planes-assessment/cursos-detallados?programaId={{programaId}}&periodoCodigo={{periodoCodigo}}&codigoRa={{raCodigo}}
+Accept: application/json
+
+### 4. Resumen Gráfico y Conclusiones del RA
+GET {{baseApi}}/planes-assessment/{{programaId}}/{{raCodigo}}/resumen-grafico?periodoCodigo={{periodoCodigo}}
+Accept: application/json
+
